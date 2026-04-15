@@ -10,9 +10,11 @@
 
 本模块作为 **prompt 源** 被以下流程调用：
 
-1. **reference/write.md** 的 Phase 2a（写章后 fact 提取）
-2. **reference/reanalyze-chapter.md** 的 Step 2（外部章节回填 truth files 时先 extract facts）
-3. 作者显式说"帮我提取第 N 章 facts"时
+1. **reference/write.md** 的 Phase 2a（写章后 fact 提取，独立 LLM 调用 → Phase 2b Settler 再合 truth files）
+2. 作者显式说"帮我提取第 N 章 facts"时（独立触发，不走写章 / reanalyze 整流程）
+
+**不调用本模块的流程**：
+- `reference/reanalyze-chapter.md` —— inkOS 原版 `chapter-analyzer.ts` 是**单阶段 LLM 调用**（一次性完成 fact 提取 + 7 truth files 更新），不套用 write.md 的 observer/settler 两阶段。reanalyze Step 2 的 prompt 来自 chapter-analyzer.ts，不是本文件
 
 本模块**只是 prompt 文档**，无副作用（不写文件、不调脚本）。调用者读完本文件后按 prompt 和格式输出 observations 文本。
 
@@ -20,10 +22,11 @@
 
 ## 使用场景
 
-- 审计前独立 fact 提取（配合 reference/audit.md）
-- 重分析章节时作为第一步（配合 reference/reanalyze-chapter.md）
-- 作者想复核某章的 facts 列表时（"帮我梳理一下第 N 章有哪些关键事实变化"）
-- observer 也可作为写章 pipeline 内部的"自检"子步骤，在正文生成后对照确认
+- 写章 pipeline 内部：Phase 2a（必跑）+ Phase 2b Settler 接着用这批 observations 产 truth files delta
+- 写章产出后的"自检"子步骤：LLM 写完正文怀疑某些事实没落 truth files 时，先跑一遍 observer 对照
+- 作者显式复核："帮我梳理一下第 N 章有哪些关键事实变化"（独立使用）
+
+**不适用的场景**：reanalyze-chapter（回填历史章）用单阶段 chapter-analyzer prompt，不调 observer——详见 `reference/reanalyze-chapter.md` Step 2 说明。
 
 ---
 
@@ -139,10 +142,10 @@ You are a fact extraction specialist. Read the chapter text and extract EVERY ob
 
 ---
 
-## 与 reanalyze-chapter.md 的协作关系
+## 和写章 Phase 2b Settler 的协作关系
 
-- **observer** 是 fact 提取（粗粒度，输出 OBSERVATIONS 段）
-- **reanalyze-chapter** 是 truth files 更新（细粒度，输出 7 个 UPDATED_XXX 段）
-- 重分析流程中可先跑 observer 提取 facts，再基于 OBSERVATIONS 产出 UPDATED_XXX
+- **observer**（本模块 / write.md Phase 2a）= fact 提取独立阶段，输出 `=== OBSERVATIONS ===` 段，**只读正文**，不写任何文件
+- **settler**（`reference/settler.md` / write.md Phase 2b）= 把 observations 合进 7 个 truth files，输出 7 个 `=== UPDATED_XXX ===` 段
+- 两阶段严格分离：Phase 2a 结束时 LLM 手头**只有 observations，没碰任何 truth file**；Phase 2b 开始时 LLM 收到 observations + 当前 7 个 truth files 副本，才产 delta
 
-二者可组合使用，也可各自单独触发。
+**和 reanalyze 的差异**：reanalyze 不套两阶段——`reference/reanalyze-chapter.md` Step 2 的 prompt 来自 inkOS 原版 chapter-analyzer.ts，**一次 LLM 调用同时做 fact 提取 + truth files 更新**。两种实现路径都有道理（前者解耦，后者简洁），按 inkOS 原项目的历史设计分工，写章用两阶段，reanalyze 用单阶段。

@@ -8,11 +8,17 @@
 >
 > 迁移流程详细步骤见本文件下方"迁移老书"段（阶段 6 补全）。
 
+
+## 新建书流程（权威唯一版，Step 0–9）
+
+> **触发**：用户说"新建一本书" / "建一本新书" / "我想写一本 XX" / "新建一本 XX"。
+> **核心思路**：强制列 15 题材 → 对话采集基本设定 → 按体裁 cp book-skeleton → 对话填 5 基础文件 + 自动初始化 4 空真相文件 → 目录 + snapshots/0/ + 空 index.json → 生成平台 init 文件 + PROGRESS.md → 告诉作者停下来审阅。
+
 ---
 
-## 新建书流程（必读）
+### Step 0 — 强制列 15 题材（不可跳）
 
-**Step 0 — 强制列题材**：用户说"新建一本 XX"时，**第一件事**不是问故事设定，而是**列出全部 15 个可选题材**（含中文名 + 英文 id + 是否数值型），让作者明确选一个：
+作者说"新建一本 XX"时，**第一件事**不是问故事设定，而是列出 15 个可选体裁让作者明确选一个：
 
 ```
 📚 ink.skill 支持的 15 个体裁：
@@ -41,164 +47,184 @@
 请告诉我你要写的是哪一种？（回复体裁中文名或 id 即可）
 ```
 
-**不要跳过这一步**。即使作者已经告诉你故事大概，也要先让他确认体裁——因为体裁决定：
+**绝不允许跳过**——即使作者已经在消息里提到"玄幻"/"科幻"这类词，仍要把 15 个选项列出来让他明确确认。题材决定：
 - 是否创建 `particle_ledger.md`（只有 5 个数值型体裁创建）
-- 启用哪些审计维度（从 37 维度里选）
-- 典型章节类型（战斗章/布局章/过渡章/回收章等）
-- 禁忌词 / 疲劳词 / 爽点类型
+- 启用哪些审计维度（从 37 维里选）
+- 典型章节类型 / 禁忌词 / 疲劳词 / 爽点类型
 
-**Step 1 — 读取对应题材配置**：作者选完后，Read `<skill_root>/genres/<genre_id>.md`，把 YAML frontmatter + 正文全部纳入上下文。
+### Step 1 — 对话采集基本设定（边问边产，不一次性问完）
 
-（体裁配置在 skill 流程里的完整集成方式见本文件末尾"体裁配置在 skill 流程里的实际集成"段。）
-
-**Step 2 — 从 book-skeleton 复制骨架到 `<父目录>/books/<书名>/`**：
-
-按体裁类型决定是否复制 `particle_ledger.md`：
-- 数值型体裁 → 复制 7 truth files（含 particle_ledger）+ `book_rules.md` + `volume_outline.md`（初始为空大纲）+ `chapters/` + `snapshots/0/`
-- 非数值型体裁 → 同上但 **跳过 particle_ledger.md**，因为这个体裁不用数值系统
-
-**Step 3 — 填充 `book_rules.md` 的 frontmatter**：
-- `genre.id` = 作者选的 id
-- `genre.name` = 对应中文名
-- `{{book_name}}` = 作者给的书名
-- `{{created_at}}` = 当前时间
-
-**Step 4 — 对话式填充基础设定**：和作者对话填 `story_bible.md`（世界观）/ `volume_outline.md`（第一卷 10-20 章大纲）/ `character_matrix.md`（主角 + 2-3 配角基本档案）。
-
-**Step 5 — 生成当前平台的 init 文件**（CLAUDE.md / AGENTS.md 等）+ 初始化 `PROGRESS.md`。
-
----
-
-# 新建书流程（详细步骤）
-
-**触发**：用户说"新建一本书" / "建一本新书" / "我想写一本 XX"。
-
-**核心思路**：直接对话产出，不用 Architect 那套重型 prompt。作者告诉 Claude 想写什么，Claude 边问边产出 5 个基础文件 + 初始化目录结构 + 创建 snapshots/0/。
-
----
-
-## 1. 对话采集（边问边写，不一次性问完）
-
-按需采集，不要一次性问太多。最少需要：
+作者明确题材后，按需采集以下 4 项必问 + 可选项。**不要逐项填表**——作者一段话讲完想法，LLM 自己提取 + 补全。
 
 | 必问 | 用途 |
 |------|------|
 | **书名** | 决定目录名 `<父目录>/books/<书名>/` |
-| **题材方向** | 玄幻 / 都市 / 科幻 / 同人 / ... 决定写作风格倾向 |
-| **主角设定** | 一两句话即可：身份 + 核心优势 + 性格底色 |
+| **主角设定** | 一两句话：身份 + 核心优势 + 性格底色 |
 | **故事梗概** | 一段话：起点 + 主线冲突 + 大致目标 |
+| **目标卷数 / 每章字数**（可用默认值） | 决定 book_rules.md 的 length 配置 |
 
-可选（不要一次问完，作者愿意补就补）：
+**可选项**（作者愿意补就补，不强迫）：
 - 平台口味（起点 / 番茄 / 晋江 / ...）
-- 目标卷数 / 每章字数
 - 语言（默认中文）
 - 是否有特殊禁忌 / 不写的元素
+- 目标读者画像
 
 **对话原则**：
-- 作者说"随便"或拒绝细化时，Claude 直接产出合理默认值，不强迫用户决策
-- 不需要逐项填表——作者一段话讲完想法，Claude 自己提取 + 补全
+- 作者说"随便"或拒绝细化时，LLM 直接产出合理默认值，不强迫决策
 - 给作者看草稿，让作者改（不要假装一次成）
+- 每问一轮就 Write 一个文件给作者看一眼（作者可以不看，但要给机会改）
 
----
+### Step 2 — 加载体裁配置
 
-## 2. 产出 5 个基础文件
+Read `<skill_root>/genres/<genre_id>.md`，把 YAML frontmatter + 正文全部纳入上下文。体裁配置在 skill 流程里的完整集成方式见本文件附录"体裁配置在 skill 流程里的实际集成"。
 
-收集到足够信息后，Claude 直接写出以下 5 个文件（写到 `<父目录>/books/<书名>/story/` 下）：
+### Step 3 — 从 book-skeleton 复制骨架
 
-| 文件 | 内容 | schema 参考 |
-|------|------|------------|
-| `story_bible.md` | 世界观 / 主角 / 阵营与角色 / 地理环境 / 标题与梗概 | §03 基础文件规范 |
-| `volume_outline.md` | 卷规划（至少第一卷）+ 黄金三章法则 | §03 |
-| `book_rules.md` | YAML frontmatter（主角锁定 / 题材锁 / 禁忌 / 疲劳词）+ 正文（叙事视角 / 核心冲突驱动）| §03 |
-| `current_state.md` | 第 0 章初始状态卡（7 个字段，全部填初始值）| §02 |
-| `pending_hooks.md` | 伏笔池表头 + 初始伏笔（最近推进列填 `0`）| §02 |
-
-**写法**：用 Write 工具一次写一个文件。每写完一个让作者看一眼（作者可以不看，但要给机会改）。
-
----
-
-## 3. 自动初始化的 4 个空真相文件
-
-5 个基础文件写完后，Claude 自动创建 4 个空表头的真相文件：
-
-| 文件 | 初始内容 |
-|------|---------|
-| `particle_ledger.md` | 7 列表头 + `init-0` 行（`\| 0 \| - \| 0 \| 0 \| 0 \| 开书初始 \| init-0 \|`）|
-| `subplot_board.md` | 9 列表头（无数据行）|
-| `emotional_arcs.md` | 6 列表头（无数据行）|
-| `character_matrix.md` | 3 子表骨架（### 角色档案 / ### 相遇记录 / ### 信息边界，每个子表只有表头）|
-
-详细 schema 见 §02。
-
----
-
-## 4. 初始化目录结构
+按体裁类型决定是否复制 `particle_ledger.md`：
 
 ```bash
+SKELETON=<skill_root>/templates/book-skeleton
 BOOK_DIR=<父目录>/books/<书名>
+
 mkdir -p "$BOOK_DIR/story/audits"
 mkdir -p "$BOOK_DIR/story/snapshots"
 mkdir -p "$BOOK_DIR/chapters"
+
+# 复制 book-skeleton 的 story/ 子目录到新书
+cp "$SKELETON/book_rules.md"              "$BOOK_DIR/story/"
+cp "$SKELETON/story/current_state.md"     "$BOOK_DIR/story/"
+cp "$SKELETON/story/story_bible.md"       "$BOOK_DIR/story/"
+cp "$SKELETON/story/volume_outline.md"    "$BOOK_DIR/story/"
+cp "$SKELETON/story/pending_hooks.md"     "$BOOK_DIR/story/"
+cp "$SKELETON/story/subplot_board.md"     "$BOOK_DIR/story/"
+cp "$SKELETON/story/emotional_arcs.md"    "$BOOK_DIR/story/"
+cp "$SKELETON/story/character_matrix.md"  "$BOOK_DIR/story/"
+cp "$SKELETON/story/chapter_summaries.md" "$BOOK_DIR/story/"
+
+# particle_ledger 全部书种都要（非数值型也记录人情债/合作链/情报权等软资源）
+cp "$SKELETON/story/particle_ledger.md" "$BOOK_DIR/story/"
 ```
 
----
+### Step 4 — 填充 book_rules.md + 5 基础文件（对话产出）
 
-## 5. 创建 snapshots/0/
+**Step 4a：book_rules.md frontmatter**
 
-5 个基础文件 + 4 个空真相文件全部就位后，立刻 cp 一份到 `snapshots/0/`，作为"第 0 章虚拟快照"——后续 rework 第 1 章时需要从这个快照恢复。
+在 `$BOOK_DIR/story/book_rules.md` 的 YAML frontmatter 里替换 `{{book_name}}` / `{{created_at}}` / `genre.id` / `genre.name` 等占位符。length / hardRules / pipeline 三段保留模板默认值。
+
+**Step 4b：5 个基础文件对话填充**
+
+基础文件是一本书的"根基"，后续每一轮写章、审稿、修订都会读它们。schema 详见本文件 §基础文件规范。
+
+| 文件 | 产出方式 |
+|------|---------|
+| `story_bible.md` | 世界观 / 主角 / 阵营与角色 / 地理环境 / 书名与简介（5 个二级标题段）|
+| `volume_outline.md` | 第一卷 10-20 章大纲 + 黄金三章法则 |
+| `book_rules.md` | Step 4a 已填 frontmatter；正文补"叙事视角 / 核心冲突驱动"两段 |
+| `current_state.md` | 第 0 章初始状态卡（7 字段填初始值）|
+| `character_matrix.md` | 3 子表骨架 + 主角 + 2-3 配角基本档案 |
+
+以上 5 个文件用 Write 工具**一个一个写**，每写完让作者过目一次。
+
+**Step 4c：4 空真相文件校正**
+
+book-skeleton 里的 `pending_hooks.md` / `subplot_board.md` / `emotional_arcs.md` / `chapter_summaries.md` 已经是空表头骨架。如果 Step 4b 产出的基础文件里有提到伏笔或支线，把对应的初始行补到这几个文件里。
+
+**particle_ledger.md 初始化（全书种都要）**：表头 + `| 0 | - | 0 | 0 | 0 | 开书初始 | init-0 |` 初始行。schema 所有书种一致，只是 `book_rules.md` 的 `resourceTypes` 配置列出本书具体要追踪哪些资源类型（金币 / 武器 / 兵力 / 人情债 / 合作链 / 情报权等，任意组合）。
+
+### Step 5 — 创建 snapshots/0/（"第 0 章虚拟快照"）
+
+5 基础文件 + 4 空真相文件全部就位后，**立刻** cp 一份到 `snapshots/0/`——这是后续 rework 第 1 章时恢复基线的唯一来源，**绝对不能漏**。
 
 ```bash
 SNAP_DIR="$BOOK_DIR/story/snapshots/0"
 mkdir -p "$SNAP_DIR"
 
 cp "$BOOK_DIR/story/current_state.md"       "$SNAP_DIR/"
-cp "$BOOK_DIR/story/particle_ledger.md"     "$SNAP_DIR/"
 cp "$BOOK_DIR/story/pending_hooks.md"       "$SNAP_DIR/"
-cp "$BOOK_DIR/story/chapter_summaries.md"   "$SNAP_DIR/" 2>/dev/null || echo "" > "$SNAP_DIR/chapter_summaries.md"
+cp "$BOOK_DIR/story/chapter_summaries.md"   "$SNAP_DIR/"
 cp "$BOOK_DIR/story/subplot_board.md"       "$SNAP_DIR/"
 cp "$BOOK_DIR/story/emotional_arcs.md"      "$SNAP_DIR/"
 cp "$BOOK_DIR/story/character_matrix.md"    "$SNAP_DIR/"
+# particle_ledger 也进 snapshot（全书种都要）
+cp "$BOOK_DIR/story/particle_ledger.md" "$SNAP_DIR/"
 ```
 
-详细快照语义见 §10。
+详细快照语义见 `reference/snapshot.md`。
 
----
-
-## 6. 创建空 chapters/index.json
+### Step 6 — 创建空 chapters/index.json
 
 ```bash
 echo "[]" > "$BOOK_DIR/chapters/index.json"
 ```
 
-JSON 数组（不是 `{chapters: []}` 包裹），对齐原项目格式。
+JSON **数组**（不是 `{chapters: []}` 包裹），对齐原 inkOS 格式。
 
----
+### Step 7 — 生成当前平台 init 文件 + 初始化 PROGRESS.md
 
-## 7. 完成后告诉作者下一步
+按当前激活平台生成一个 init 文件：
 
-Claude 完成上述全部步骤后，主动告诉作者：
+| 平台 | 文件 |
+|------|------|
+| Claude Code | `CLAUDE.md` |
+| Codex | `AGENTS.md` |
+| Gemini CLI | `GEMINI.md` |
+| Cursor | `.cursorrules` |
+| 不识别 | `AGENT_INSTRUCTIONS.md` |
+
+模板见 `<skill_root>/templates/init/`（4 份预设模板）。init 文件放在 `$BOOK_DIR/` 下（与 story/ 和 chapters/ 同级）。
+
+**PROGRESS.md** 按 `<skill_root>/templates/PROGRESS.template.md` 模板写 `$BOOK_DIR/PROGRESS.md`，替换 {{book_name}} / {{created_at}} 等占位符。`📌 活跃 followup` 段初始化为"暂无活跃 followup"，`📜 操作时间线` 段追加一行 `<ISO 时间> · 新建书完成`。
+
+### Step 8 — 告诉作者下一步（给审阅窗口 + **主动介绍 2 个可选文件**）
+
+全部步骤完成后，LLM **主动**告诉作者：
 
 > 「书已建好。下一步：
-> 1. 看一眼 `story/story_bible.md` 和 `story/volume_outline.md`，不满意可以告诉我改
-> 2. 准备好就说『写第 1 章』」
+> 1. 看一眼 `story/story_bible.md`（世界观设定）和 `story/volume_outline.md`（卷纲），不满意告诉我改
+> 2. 看一眼 `story/book_rules.md` 的 length 配置（target 字数 / softMin-hardMin 区间），默认 4500 字，想改现在说
+> 3. 准备好就说『写第 1 章』
+>
+> **另外有两个可选文件你想要的话可以加**，默认不建，你想加告诉我：
+>
+> - **📘 作者意图**（`story/author_intent.md`）：你对这本书的全局期待，例如"我想写成一本冷峻的政治权谋"、"节奏要慢，感情戏克制"、"核心主题是身份认同"。Writer / Reviser 每次写 / 改章节时会把这份作为**软指导**读一眼，保证整本书的风格和主题不漂移。**推荐有明确主题/风格追求的作者加**
+>
+> - **🎯 当前聚焦**（`story/current_focus.md`）：你在**当前阶段**想让 LLM 特别注意的事，例如"最近 3 章重点铺设 X 支线"、"ch 15-20 压低感情戏比重"、"本卷结束前把 H038 真牌线收回来"。Writer / Planner 每次规划章节时会读一眼。**和作者意图的区别**：作者意图是"整本书怎么样"（长期），当前聚焦是"现在这几章怎么样"（随时可改）
+>
+> 这两个文件**随时能加**（直接建这个 md 写内容就行），也能随时改或删。想加的话告诉我要加哪个，我帮你起草初稿」
 
-不要默认作者立刻开始写。给一个停下来审阅的窗口。
+**不要默认作者立刻开始写**。给一个停下来审阅的窗口。**也绝不要省略 2 个可选文件的提醒**——作者不知道这俩文件存在的话，永远不会主动加，等于功能死在那里。
+
+### Step 9 — 新建书完成（verify 自检）
+
+激活体检（SKILL.md §2 步骤 c.5）不会对新建书触发（`chapters/index.json` 为空数组 `[]` 时跳过）。作者下次进 skill 写第 1 章时，Step 12 verify 会对 ch 1 做第一次完整 14/14 检查。
 
 ---
 
-## 8. 与原项目的差异
+## 附录：新建书模式与原项目的差异
 
-| 原项目（Architect agent）| skill 模式 |
-|------------------------|-----------|
+| 原 inkOS（Architect agent）| ink.skill 模式 |
+|---------------------------|---------------|
 | 单次 LLM call 一次性产出 5 个 section（temperature 0.8 / maxTokens 16384）| 多轮对话，按需问、按需产出 |
-| 用 `=== SECTION: <name> ===` 切分输出 | 直接 Write 单个文件 |
+| 用 `=== SECTION: <name> ===` 切分输出 | 直接 Write 工具写单个文件 |
 | 严格 JSON schema 校验 | LLM 自己保证格式正确 + 作者审阅 |
 | 必须收齐所有信息才开始 | 作者愿意省略的字段直接给默认值 |
 
-skill 模式更轻——没有 Architect agent 的 system prompt 模板（节省几百行），靠对话自然推进。
-# 基础文件规范
+ink.skill 模式更轻——没有 Architect agent 的 system prompt 模板（节省几百行），靠对话自然推进。
 
-基础文件是一本书的"根基"，在新建书时由 Architect 生成或用户手写，之后每一轮写章、审稿、修订都会读它们。一共 5 个，其中 2 个可选。
+## 基础文件规范
+
+基础文件是一本书的"根基"，在新建书时由 LLM 和作者对话产出，之后每一轮写章、审稿、修订都会读它们。
+
+**数量清单**（对照 Step 4b/4c）：
+- **5 个必填**（Step 4b 对话产出）：`story_bible.md` / `volume_outline.md` / `book_rules.md` / `current_state.md` / `character_matrix.md`
+- **5 个空表头**（Step 4c 自动初始化，**全部书种都要**）：`pending_hooks.md` / `subplot_board.md` / `emotional_arcs.md` / `chapter_summaries.md` / **`particle_ledger.md`**
+- **2 个可选**（作者可选择加）：`author_intent.md`（**作者意图**，§5）/ `current_focus.md`（**当前聚焦**，§6）
+
+**关于资源账本 particle_ledger.md**：**全部书种都要，和体裁无关**。ledger 记录的是**本书里一切需要追踪的资源**——金币、武器、兵力、伤势、道具、人情债、合作链、信任值、情报权等等，**任何带数量或状态变化的资源都进 ledger**。
+
+"数值型体裁 vs 非数值型体裁"的区别**不在 ledger 的有无**，而在 **power system 本身是不是数值驱动**（例如修仙的"筑基/金丹/元婴"等级体系是数值驱动，都市现代剧里"主角买了把手枪"是普通情节数字但不是 power system）。ledger 永远必备，差异只在 `book_rules.md` 的 `numericalSystemOverrides.resourceTypes` 列表具体写什么资源类型。
+
+下面 §1-§6 按**必填 5 + 可选 2** 展开各自的 schema。空表头的 5 个详见 `reference/truth-schema.md`。
 
 所有基础文件位于 `<父目录>/books/<书名>/story/` 下。
 
