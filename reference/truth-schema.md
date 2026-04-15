@@ -1,13 +1,15 @@
 # truth-schema — 7 个真相文件的 schema 参考
 
 > 本模块由 ink.skill 在任何需要读写 truth files 时 Read。
-> 真相文件：current_state / particle_ledger（资源账本）/ pending_hooks（伏笔池）/ chapter_summaries / subplot_board（支线进度板）/ emotional_arcs（角色情感弧线）/ character_matrix（角色交互矩阵）/ story_bible（世界观设定）。
+> **7 个真相文件**：current_state（当前状态卡）/ particle_ledger（资源账本）/ pending_hooks（伏笔池）/ subplot_board（支线进度板）/ emotional_arcs（情感弧线）/ character_matrix（角色交互矩阵）/ chapter_summaries（章节摘要）。
+>
+> **不在本文件内的相关文件**：`story_bible.md`（世界观设定）、`volume_outline.md`（卷纲）、`book_rules.md`（本书规则）—— 这三个是**基础文件**（写章不会每章更新，只在 init 时建 + 作者手动修订），schema 见 `reference/init.md` §基础文件规范。
 
 ---
 
-# 真相文件 Schema 规范
+## 真相文件 Schema 规范
 
-每本书的 `story/` 目录下有 7 个真相文件（truth files），是世界状态的持久化层。它们的 schema 和合并语义各不相同，**搞混了会引发数据丢失**。
+每本书的 `story/` 目录下有 7 个真相文件（truth files），是世界状态的持久化层，**每章由 Settler 更新**。它们的 schema 和合并语义各不相同，**搞混了会引发数据丢失**。
 
 本章节定义所有 7 个文件的精确 schema、合并 key、更新规则。写章、审计、修订、结算都必须严格遵守。
 

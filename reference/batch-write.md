@@ -19,10 +19,12 @@ for N in [start..end]:
     iter = 0
     while iter < MAX_ITER:
         if iter == 0:
-            # 第一轮：完整写章流程（按 .claude-modules/write.md）
-            run write_pipeline(N)   # 含 PRE_WRITE_CHECK / Writer / Post-write-validator / Settler
+            # 第一轮：完整写章 14 步 pipeline（按 reference/write.md）
+            run write_pipeline(N)
+            # 含 Step 1-4 准备 / Step 5 Writer / Step 6 post-write-validator
+            # / Step 7 audit / Step 8 reviser / Step 8.5 Titler / Step 9 Settler
         else:
-            # 后续轮：针对性 spot-fix（按 .claude-modules/revise.md）
+            # 后续轮：针对性 spot-fix（按 reference/revise.md）
             # 只传 critical + warning 给 reviser，followup/info **不传**（见 §14.2）
             issues_to_fix = [i for i in last_audit.issues if i.severity in ("critical", "warning")]
             if not issues_to_fix:
@@ -40,16 +42,17 @@ for N in [start..end]:
 
     if iter >= MAX_ITER and still has warnings+:
         PAUSE — 报告作者当前状态，询问："ch N 经 {MAX_ITER} 轮修订仍有 X 个 warning，是否继续 ch N+1？还是停下来人工介入？"
-        # 作者说继续 → 放行此章走 snapshot + verify 即可
+        # 作者说继续 → 放行此章走 Step 8.5 Titler + snapshot + verify 即可
         # 作者说停 → 本次连写结束，保留已完成的章
 
-    # 每章独立结算 + 快照 + 流程审核（不能合并多章）
-    run_settle(N)
-    run_snapshot(N)
+    # 每章独立走 Step 8.5 Titler + 结算 + 快照 + 流程审核（不能合并多章）
+    run_titler(N)      # Step 8.5：基于定稿正文重取章节标题
+    run_settle(N)      # Step 9：更新 7 truth files
+    run_snapshot(N)    # Step 10：冻结 snapshots/N/
 
     # 强制流程审核：跑 verify-chapter.py 并把完整 ✅/❌ checklist 贴给作者
     verify_stdout, exit_code = run_verify(N)
-    show_to_author(verify_stdout)  # 13 个环节逐项可见
+    show_to_author(verify_stdout)  # 14 个环节逐项可见（v0.1.10 起含 Followup 段检查）
 
     if exit_code != 0:
         STOP — 具体报告哪个环节 ❌、需要补齐什么，不继续下一章
@@ -101,7 +104,7 @@ for N in [start..end]:
 ...
 ```
 
-reviser 按 `.claude-modules/revise.md` 的 spot-fix 模式执行：只动问题句 + 前后各一句，保留其他所有内容原封不动。
+reviser 按 `reference/revise.md` 的 spot-fix 模式执行：只动问题句 + 前后各一句，保留其他所有内容原封不动。
 
 ### 修订后必须重审
 
@@ -125,8 +128,8 @@ reviser 按 `.claude-modules/revise.md` 的 spot-fix 模式执行：只动问题
 
 1. Settler（更新 7 个 truth files）
 2. Snapshot（保存到 `snapshots/N/`）
-3. **流程审核**：用 Bash 工具调用 `python3 <ink_writer 仓库>/scripts/verify-chapter.py <booksRoot> <书名> <N>`（若 PRE_WRITE_CHECK 声明"允许偏短"追加 `--allow-short`）
-4. **把 verify-chapter.py 的 stdout 完整贴给作者**（13 个 ✅/❌ 环节 + 最终汇总行）
+3. **流程审核**：用 Bash 工具调用 `python3 <SKILL_DIR>/scripts/verify-chapter.py <booksRoot> <书名> <N>`（`<SKILL_DIR>` 解析规则见 SKILL.md §8；若 PRE_WRITE_CHECK 声明"允许偏短"追加 `--allow-short`）
+4. **把 verify-chapter.py 的 stdout 完整贴给作者**（14 个 ✅/❌ 环节 + 最终汇总行，v0.1.10 起含 Followup 段检查）
 
 **理由**：truth files 是下一章 context 的基础，结算不及时会让下一章 planner 读到错误的状态卡。流程审核是**最后的兜底**，你（LLM）自己可能漏 Step 10/11，verify 脚本会把漏掉的环节用 ❌ 显式抓出来，作者一眼就能看到。
 
@@ -135,7 +138,7 @@ reviser 按 `.claude-modules/revise.md` 的 spot-fix 模式执行：只动问题
 连写场景下，LLM 有天然的偷懒诱因——一次回复里处理 14 章，用"ch 1-14 全部通过"一笔带过就想往下走。**禁止**。
 
 强制约束（见 SKILL.md §7 强制律 9）：
-- **每章**都必须单独贴一块 verify stdout（13 条 ✅/❌ 环节），不允许只贴一次汇总
+- **每章**都必须单独贴一块 verify stdout（14 条 ✅/❌ 环节，含 v0.1.10 新增的 Followup 段检查），不允许只贴一次汇总
 - 若作者看到一段"ch N-M 均已完成"但没看到 M-N+1 份 verify stdout → **已写的那几章视为作废，必须逐章重跑 verify 并贴输出**
 - 在 stdout 贴出来之前，**index.json 里那章的 status 不允许写 `approved`**（最多写 `draft`）
 - 即使用了 `run_in_background` 跑连写，每章回报时也必须把当章 verify stdout 贴出来
@@ -154,12 +157,12 @@ reviser 按 `.claude-modules/revise.md` 的 spot-fix 模式执行：只动问题
 
 ## §14.3.1 verify ❌ 的自动补救
 
-**完整规则见 `.claude-modules/write.md` 的 §Step 12.1（单章 + 连写共用）**——定义了哪些 ❌ 可以盲修、哪些必须硬停问作者、补救循环伪代码、每步告知作者的格式。
+**完整规则见 `reference/write.md` 的 §Step 12.1（单章 + 连写共用）**——定义了哪些 ❌ 可以盲修、哪些必须硬停问作者、补救循环伪代码、每步告知作者的格式。
 
 连写场景下的特别约束：
 - 补救最多 **2 轮**，仍 ❌ → 硬停，**不进入下一章**
 - 补救期间作者说"停" → 立即中断连写（保留已完成章节 + 当前章的半修复状态）
-- 补救成功后，仍按 §14.4 把最终 13 环节 ✅ checklist 贴给作者看，再继续下一章
+- 补救成功后，仍按 §14.4 把最终 14 环节 ✅ checklist 贴给作者看，再继续下一章
 
 ---
 
@@ -181,7 +184,7 @@ reviser 按 `.claude-modules/revise.md` 的 spot-fix 模式执行：只动问题
 
 ### 块 2：流程审核（把 verify-chapter.py stdout 原样贴出来）
 
-直接把脚本输出的 13 个 ✅/❌ 环节贴给作者，例如：
+直接把脚本输出的 14 个 ✅/❌ 环节贴给作者（v0.1.10 起含 Followup 段检查），例如：
 
 ```
 === 第 {N} 章流程审核（{书名}）===
@@ -195,6 +198,7 @@ reviser 按 `.claude-modules/revise.md` 的 spot-fix 模式执行：只动问题
 
 【Step 7 · 审计】
   ✅ story/audits/ch-N.md 存在
+  ✅ audit 末尾 `## Followup` 段存在（v0.1.10）
 
 【Step 9 · 结算：7 个 truth files】
   ✅ current_state.md 当前章节 ≥ {N}
@@ -212,7 +216,7 @@ reviser 按 `.claude-modules/revise.md` 的 spot-fix 模式执行：只动问题
   ✅ index.json 含 ch N 条目且 status ∈ {approved, audited}
 
 ==================================================
-✅ 流程审核全部通过（13/13 环节）
+✅ 流程审核全部通过（14/14 环节）
 🎉 第 {N} 章完成
 ```
 
@@ -233,9 +237,9 @@ reviser 按 `.claude-modules/revise.md` 的 spot-fix 模式执行：只动问题
 ## §14.5 与单章写作的关系
 
 连写 = 单章流程的循环执行 + audit 驱动的自动修订。本模块**不重新定义**：
-- 写章流程（读 `.claude-modules/write.md`）
-- 审计流程（读 `.claude-modules/audit.md`）
-- 修订流程（读 `.claude-modules/revise.md`）
+- 写章流程（读 `reference/write.md`）
+- 审计流程（读 `reference/audit.md`）
+- 修订流程（读 `reference/revise.md`）
 
 **首次进入连写时，必须依次 Read 上述 3 个模块**（读完后 session 内都可用），再开始循环。
 

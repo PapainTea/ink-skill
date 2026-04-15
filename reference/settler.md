@@ -51,61 +51,55 @@
 
 ## 输出格式（必须严格遵循）
 
+> **设计原则**：ink.skill 的 settler 输出**全部是 Markdown**，直接对应 7 个 truth files 写回磁盘。
+> 与 inkOS 原版 `RUNTIME_STATE_DELTA` JSON 格式的**差异**：inkOS 用 JSON delta 给 TypeScript 代码 `state-reducer.ts` 消费；skill 没有代码消费这个 JSON，让 LLM 直接产 Markdown 更高效。
+> **prompt 意图（提取 9 类事实 / 伏笔追踪规则 / 数值验算）对齐 inkOS**；**输出格式是 skill-native** —— 7 个 `=== UPDATED_XXX ===` 段对应 7 个 truth files，Write 工具直接写回。
+
 ### `=== POST_SETTLEMENT ===`
 
-（简要说明本章有哪些状态变动、伏笔推进、结算注意事项；允许 Markdown 表格或要点）
+（给作者看的本章结算简要总结。允许 Markdown 表格或要点：本章有哪些状态变动、哪些伏笔推进、有什么要作者关注的结算注意事项。这一段不写入任何 truth file，只作为消息输出。）
 
-### `=== RUNTIME_STATE_DELTA ===`
+### `=== UPDATED_STATE ===`
 
-必须输出 JSON，不要输出 Markdown，不要加解释。
+`current_state.md` 的完整新版（**整体覆盖**，不是 delta）：
 
-```json
-{
-  "chapter": <N>,
-  "currentStatePatch": {
-    "currentLocation": "可选",
-    "protagonistState": "可选",
-    "currentGoal": "可选",
-    "currentConstraint": "可选",
-    "currentAlliances": "可选",
-    "currentConflict": "可选"
-  },
-  "hookOps": {
-    "upsert": [
-      {
-        "hookId": "mentor-oath",
-        "startChapter": 8,
-        "type": "relationship",
-        "status": "progressing",
-        "lastAdvancedChapter": <N>,
-        "expectedPayoff": "揭开师债真相",
-        "notes": "本章为何推进/延后/回收"
-      }
-    ],
-    "mention": ["本章只是被提到、没有真实推进的 hookId"],
-    "resolve": ["已回收的 hookId"],
-    "defer": ["需要标记延后的 hookId"]
-  },
-  "chapterSummary": {
-    "chapter": <N>,
-    "title": "本章标题",
-    "characters": "角色1,角色2",
-    "events": "一句话概括关键事件",
-    "stateChanges": "一句话概括状态变化",
-    "hookActivity": "mentor-oath advanced",
-    "mood": "紧绷",
-    "chapterType": "主线推进"
-  },
-  "subplotOps": [],
-  "emotionalArcOps": [],
-  "characterMatrixOps": [],
-  "notes": []
-}
+```markdown
+# 当前状态
+
+| 字段 | 值 |
+| --- | --- |
+| 当前章节 | {N} |
+| 当前位置 | <地点> |
+| 主角状态 | <身体/心理状态简述> |
+| 当前目标 | <本阶段要达成的目标> |
+| 当前限制 | <当前约束条件> |
+| 当前敌我 | <势力 A（敌对）/ 势力 B（同盟）/ 势力 C（中立）> |
+| 当前冲突 | <本阶段核心冲突> |
 ```
+
+**可选附加段**："审计纠偏"（v0.1.10 起语义收窄，只放"下一章写作硬节点清单 + 本章观察性 info"，跨章 followup 走 audit md 的 `## Followup`；详见 `reference/audit.md` §7）。
+
+### `=== UPDATED_HOOKS ===`
+
+`pending_hooks.md` 的完整新版（**全文重写**，按 hook_id 合并）：
+
+```markdown
+# 伏笔池
+
+| hook_id | 起始章节 | 类型 | 状态 | 最近推进 | 预期回收 | 备注 |
+|---------|---------|------|------|---------|---------|------|
+| H001 | 1 | 身世/机制 | progressing | {N} | 第一卷中后段 | 本章为何推进/延后/回收 |
+```
+
+**合并规则**（见 `reference/hook-governance.md`）：
+- `upsert`（推进 / 新增）：本章推进的 hook → 更新"最近推进" = {N}，状态字段按 hook-governance.md §Disposition 分类逻辑判定；新 hook → 新增一行
+- `mention`：被提到但无状态变化 → **不**更新"最近推进"，备注补一句"本章提及"
+- `resolve`：状态改 `resolved`，备注记回收方式
+- `defer`：状态改 `deferred`，备注记延后理由
 
 ### `=== UPDATED_LEDGER ===`
 
-按 7 列账本 schema 输出完整最新 Markdown（列定义与事件 ID 规则见 `02-truth-schema.md`）。
+按 7 列账本 schema 输出完整最新 Markdown（列定义与事件 ID 规则见 `reference/truth-schema.md`）。
 
 ### `=== UPDATED_SUBPLOTS ===`
 
@@ -136,16 +130,26 @@
 （每行一条"某角色知道/不知道某关键信息"的记录。Section 2 的 key 是第 0 列 + 第 3 列 [角色, 信息来源章]。）
 ```
 
+### `=== UPDATED_CHAPTER_SUMMARIES ===`
+
+`chapter_summaries.md` 的**一行新增**（追加到已有表末尾，**不是全量重写**）：
+
+```markdown
+| {N} | {本章标题} | {角色1,角色2,角色3} | {一句话概括关键事件} | {一句话概括状态变化} | {hook 动态摘要，如"H001 advanced, H053 added"} | {情绪基调} | {章节类型} |
+```
+
+**格式**：8 列，对齐 `reference/truth-schema.md` §7 定义。如 `subplot_board` / `emotional_arcs` / `character_matrix` 输出 sentinel（无变动占位）时，本行的 hook 动态列可留空或写"无"。
+
 ## 关键规则
 
 1. 状态卡和伏笔池必须基于"当前追踪文件"做增量更新，不是从零开始
 2. 正文中的每一个事实性变化都必须反映在对应的追踪文件中
 3. 不要遗漏细节：数值变化、位置变化、关系变化、信息变化都要记录
 4. 角色交互矩阵中的"信息边界"要准确——角色只知道他在场时发生的事
-5. `RUNTIME_STATE_DELTA` 只负责 `current_state` / `hooks` / `chapterSummary` 的增量 JSON；`UPDATED_LEDGER`（如有）、`UPDATED_SUBPLOTS`、`UPDATED_EMOTIONAL_ARCS`、`UPDATED_CHARACTER_MATRIX` 必须输出完整最新 Markdown
+5. **输出全部是 Markdown**（ink.skill 原则：prompt 意图对齐 inkOS，输出格式是 skill-native）。7 个 `=== UPDATED_XXX ===` 段对应 7 个 truth files，LLM 逐段 Write 回磁盘。没有 JSON delta 格式
 6. 所有章节号字段都必须是整数，不能写自然语言
-7. 如果旧 hook 只是被提到、没有真实状态变化，把它放进 `mention`，不要更新 `lastAdvancedChapter`
-8. 如果本章推进了旧 hook，`lastAdvancedChapter` 必须等于当前章号
-9. 如果回收或延后 hook，必须放在 `resolve` / `defer` 数组里
-10. `chapterSummary.chapter` 必须等于当前章节号
+7. 如果旧 hook 只是被提到、没有真实状态变化，保持 `pending_hooks.md` 里该 hook 的"最近推进"列**不变**，只在备注里加一句"{N} 章被提及"
+8. 如果本章推进了旧 hook，`pending_hooks.md` 里该 hook 的"最近推进"列必须 = 当前章号
+9. 如果回收或延后 hook，状态列改为 `resolved` / `deferred`，备注记回收方式 / 延后理由
+10. `UPDATED_CHAPTER_SUMMARIES` 只输出新增那一行，不重写整表（避免误删历史章摘要）
 11. 如果当前文件不存在或只有表头，也必须输出一个可直接写回磁盘的完整骨架
