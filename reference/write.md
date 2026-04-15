@@ -1168,3 +1168,43 @@ else:
 - 极具文学性、隐喻或象征寓意
 - 不要直白概括剧情，要用意象、典故或修辞
 - 只输出标题本身，不要章节编号、不要引号、不要解释
+
+---
+
+## 附：v0.1.10 Followup 机制对本模块 Step 7 / Step 9 的补丁
+
+> 以下是对上方既有 Step 7（审计）和 Step 9（结算）段落的**补丁**（不改写既有文本）。执行时两段都要照此追加动作。完整机制详见 `reference/audit.md` §7。
+
+### Step 7（审计）补丁——第一动作改为"继承上章 followup"
+
+执行 Step 7 时，按此顺序：
+
+1. **（新）Step 7.0 继承上章 followup**
+   - Read `story/audits/ch-<N-1>.md` 的 `## Followup` 段（若 N=1 跳过）
+   - 对每条 `[ ]` 条目：判断本章是否消化，已消化 → `[x]` 记本章动作；未消化 → 原样搬带 `[ ]`
+   - Read 上章 `current_state.md` 或 `snapshots/<N-1>/current_state.md` 的"审计纠偏"段，把里面 severity=warning/info 但含未来导向语义（若 / 后续 / 需注意 / 监测 / ch X+ / 建议 ch X 起）的条目迁进新 audit 的 `## Followup`
+2. Step 7.1-7.N（原 37 维度 audit 照常跑）
+3. 本章新发现的 followup 追加到 `## Followup` 段末尾
+4. **audit md 末尾必须是 `## Followup` 段**（空则写"（本章无新增 followup；上章继承项无未消化）"）
+
+### Step 9（结算）补丁——最后动作改为"重算 PROGRESS.md 活跃 followup"
+
+执行 Step 9 结算 7 个 truth files 之后、Step 10 Snapshot 之前：
+
+1. grep 全部 `story/audits/ch-*.md` 的 `## Followup` 段里状态为 `[ ]` 的条目
+2. 按预期窗口 `ch X-Y` 的 X 升序排
+3. 重写 `PROGRESS.md` 的 `## 📌 活跃 followup` 段
+4. 格式：`- [ ] ch X-Y：<描述>（来源 ch Z）`
+
+### current_state.md 的"审计纠偏"段语义收窄
+
+以前审计纠偏段塞硬节点 + warning + 跨章监测三类东西。v0.1.10 起：
+- **保留**：🔴 结构性硬约束（下一章必看的硬节点清单）+ 常规 info（本章观察性备注）
+- **迁走**：任何 severity=warning 且语义是"未来章节需要做 X"的条目 → 必须去 audit `## Followup` 段
+- **Settler 覆盖自检**：覆盖 current_state.md 前，扫"审计纠偏"段若仍含带未来导向语义的 warning → 硬停，要求先迁移到本章 audit `## Followup`
+
+### Step 12 verify 的 Layer 2 新增两条
+
+（将在 `scripts/verify-chapter.py` v0.1.10 同步更新）：
+- audit md 末尾必须有 `## Followup` 段 → 缺段 = ❌
+- PROGRESS.md 活跃 followup 段内容必须 = 所有 audits `## Followup` 里 `[ ]` 条目的聚合 → 不一致 = ❌
