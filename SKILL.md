@@ -1,7 +1,7 @@
 ---
 name: ink
 description: |
-  长篇网络小说写作系统。触发词（大小写不敏感）：ink / Ink / 写书 / 写小说 / 写第 N 章 / 续写 / 连写 / 连写 N 章 / 连续写作 / 审计章节 / 审计第 N 章 / 润色章节 / 润色第 N 章 / 修订 / 扩写 / 压缩 / 新建书 / 新建章节 / 新建一本 / 新章节 / ink初始化 / ink init / ink迁移 / ink migrate / followup / 伏笔 / 粒子账本 / 人物矩阵 / 世界观 / 章节大纲 / 真相文件 / 结算章节 / 章节结算。用户消息含"ink"（大小写不敏感）必须触发本skill。本skill覆盖所有小说创作场景，不要同时调用writing-skills / doc-coauthoring / brainstorming。
+  长篇网络小说写作系统。触发词（大小写不敏感）：ink / Ink / 写书 / 写小说 / 写第 N 章 / 续写 / 连写 / 连写 N 章 / 连续写作 / 审计章节 / 审计第 N 章 / 润色章节 / 润色第 N 章 / 修订 / 扩写 / 压缩 / 新建书 / 新建章节 / 新建一本 / 新章节 / ink初始化 / ink init / ink迁移 / ink migrate / followup / 伏笔 / 资源账本 / 粒子账本 / 角色交互矩阵 / 人物矩阵 / 世界观 / 章节大纲 / 真相文件 / 结算章节 / 章节结算。用户消息含"ink"（大小写不敏感）必须触发本skill。本skill覆盖所有小说创作场景，不要同时调用writing-skills / doc-coauthoring / brainstorming。
 ---
 
 # ink.skill — 长篇网络小说写作系统
@@ -64,8 +64,8 @@ Read `<书根>/PROGRESS.md`。
 | 审计章节 | `reference/audit.md` | 审计章节 / 审计第 N 章 / 审稿 |
 | 修订章节（润色、扩写、压缩、重写） | `reference/revise.md` | 润色 / 扩写 / 压缩 / 修订 / 改写 / 重写 |
 | 新建书 / 迁移老书 / 初始化 | `reference/init.md` | 新建一本 / ink 初始化 / ink init / ink 迁移 / ink migrate |
-| 结算 / 快照 / 伏笔治理 | `reference/snapshot.md` | 结算章节 / 章节结算 / 快照 / 伏笔 / 粒子账本 |
-| 查询 7 个真相文件的 schema | `reference/truth-schema.md` | 人物矩阵 / 粒子账本 / 世界观 / 章节大纲 / 真相文件 |
+| 结算 / 快照 / 伏笔治理 | `reference/snapshot.md` | 结算章节 / 章节结算 / 快照 / 伏笔 / 资源账本 / 粒子账本 |
+| 查询 7 个真相文件的 schema | `reference/truth-schema.md` | 角色交互矩阵 / 资源账本 / 人物矩阵 / 粒子账本 / 世界观 / 章节大纲 / 真相文件 |
 
 **加载 reference 模块** = 用当前 agent 的文件读工具 Read 对应 `.md` 文件，把内容纳入上下文；不是安装依赖或 import 包。
 

@@ -23,13 +23,15 @@
 
 | 文件 | 位置 | 什么时候读 |
 |------|------|------------|
-| 角色档案 | `story/character_matrix.md` | 写章前、审计"人物一致性"维度 |
-| 世界观设定 | `story/worldbook.md` | 写涉及设定的章节前 |
-| 粒子账本 | `story/particle_ledger.md` | 写有物品/资源变动的场景前、审计"资源一致性" |
+| 角色交互矩阵 | `story/character_matrix.md` | 写章前、审计"人物一致性"维度；3 子表：角色档案/相遇记录/信息边界 |
+| 世界观设定 | `story/story_bible.md` | 写涉及设定的章节前 |
+| 资源账本 | `story/particle_ledger.md` | 写有物品/资源变动的场景前、审计"资源一致性"（仅数值型体裁启用）|
 | 章节摘要 | `story/chapter_summaries.md` | 写章前检查前情 |
 | 当前状态卡 | `story/current_state.md` | 每次激活 |
-| 伏笔记录 | `story/foreshadow.md` | 写章前检查待回收伏笔 |
-| 时间线 | `story/timeline.md` | 写涉及时间推进的场景前 |
+| 伏笔池 | `story/pending_hooks.md` | 写章前检查待回收伏笔 |
+| 支线进度板 | `story/subplot_board.md` | 写涉及支线推进的章节前 |
+| 角色情感弧线 | `story/emotional_arcs.md` | 写涉及角色情绪转变的场景前 |
+| 卷纲 | `story/volume_outline.md` | 写新章前参考当前卷的脉络 |
 
 ## 📜 操作时间线  <!-- append-only; 最多保留 20 条，溢出归档到 story/progress-archive.md -->
 

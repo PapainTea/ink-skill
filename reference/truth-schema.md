@@ -1,7 +1,7 @@
 # truth-schema — 7 个真相文件的 schema 参考
 
 > 本模块由 ink.skill 在任何需要读写 truth files 时 Read。
-> 真相文件：character_matrix / worldbook / particle_ledger / chapter_summaries / current_state / foreshadow / timeline。
+> 真相文件：current_state / particle_ledger（资源账本）/ pending_hooks（伏笔池）/ chapter_summaries / subplot_board（支线进度板）/ emotional_arcs（角色情感弧线）/ character_matrix（角色交互矩阵）/ story_bible（世界观设定）。
 
 ---
 

@@ -438,6 +438,50 @@ skill 一激活，检查当前书根是否为"老书"：
 
 ---
 
+## 附录：体裁选择与配置加载
+
+**新建书时的体裁选择**：
+
+ink.skill 支持 15 个体裁配置，位于 `<skill_root>/genres/<genre-id>.md`。创建书时让作者从以下列表选一个：
+
+**数值型体裁**（会创建 `particle_ledger.md` 资源账本）：
+- `xuanhuan` — 玄幻
+- `xianxia` — 仙侠
+- `dungeon-core` — 地下城核心（LitRPG 子类）
+- `system-apocalypse` — 系统末日
+- `litrpg` — LitRPG（游戏系统）
+
+**非数值型体裁**（不创建 `particle_ledger.md`，只用 subplot_board + character_matrix）：
+- `urban` — 都市
+- `horror` — 恐怖/悬疑
+- `cultivation` — 修真（软系统，区别于 xianxia 的硬修炼）
+- `progression` — 渐进成长
+- `sci-fi` — 科幻
+- `romantasy` — 浪漫奇幻
+- `cozy` — 治愈/轻松
+- `isekai` — 异世界转生
+- `tower-climber` — 爬塔
+- `other` — 其他/通用
+
+**加载规则**：
+1. 新建书时读取所选体裁的 `.md`（含 YAML frontmatter：`chapterTypes` / `fatigueWords` / `satisfactionTypes` / `auditDimensions` 等）
+2. 把关键字段注入 `<书根>/book_rules.yaml` 的对应段（或保留作为独立 book 元信息）
+3. 写作/审计时 skill 加载当前体裁的配置，把"题材禁忌""数值规则""节奏规则""章节类型"等纳入上下文
+
+**关键字段含义**：
+- `numericalSystem: true/false` — 是否启用资源账本
+- `powerScaling: true/false` — 是否有力量等级体系
+- `eraResearch: true/false` — 是否需要时代考据（历史/科幻常需要）
+- `chapterTypes` — 本体裁典型章节类型（战斗章 / 布局章 / 过渡章 / 回收章 等）
+- `fatigueWords` — 本体裁易滥用词汇（写作时需避免）
+- `satisfactionTypes` — 本体裁典型爽点类型
+- `pacingRule` — 节奏规则（如"三章内必有明确反馈"）
+- `auditDimensions` — 启用的审计维度编号（37 维度中选哪些）
+
+**作者未选体裁时**：默认 `other`，加载 `genres/other.md`。
+
+---
+
 ## 附录：数据目录结构参考（原 src/01-data-structure.md）
 
 > 本段由 v0.1.0 → v0.1.1 补齐。描述作者 books/ 目录的规范布局、`.ink-writer.yaml` 配置、7 truth files 清单、章节文件命名约定等。新建书 / 迁移老书时作为参考。
