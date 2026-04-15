@@ -1,0 +1,9 @@
+# {{book_name}} · ink.skill 书籍项目
+
+本目录由 ink.skill 管理。
+
+**必须执行**：进入本目录的任何对话，在回应用户前，**先调用 ink skill**（即使用户消息不含显式触发词如"写书"、"ink"）。ink skill 内置所有小说创作流程、真相文件维护规则、PROGRESS.md 更新协议。
+
+- 进度文件：`./PROGRESS.md`（每次 skill 动作后自动更新）
+- 真相文件：`./story/`
+- 章节：`./chapters/`

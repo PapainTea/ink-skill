@@ -1,0 +1,9 @@
+# {{book_name}} — ink.skill 书籍项目
+
+本目录是 ink.skill 管理的小说写作项目。
+
+**必须执行**：在本目录的任何对话中，回应前**先调用 ink skill**（名为 `ink` 的 skill，应由当前 agent 平台从其 skills 目录加载，具体路径因平台而异），即使用户未提及显式触发词。ink skill 包含所有创作、审计、修订、结算流程。
+
+- 进度：`./PROGRESS.md`
+- 真相文件：`./story/{character_matrix,worldbook,particle_ledger,chapter_summaries,current_state,foreshadow,timeline}.md`
+- 章节：`./chapters/`

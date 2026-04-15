@@ -1,0 +1,11 @@
+本目录是 ink.skill 管理的小说写作项目（书名：{{book_name}}）。
+
+**必须**：所有对话回应前，先调用 ink skill（无论用户是否用显式触发词）。
+
+步骤：
+1. 先读 ./PROGRESS.md 获取当前进度和 followup
+2. 按需读 ./story/ 下真相文件（character_matrix / worldbook / particle_ledger / chapter_summaries / current_state / foreshadow / timeline）
+3. 章节写入 ./chapters/（命名：4 位章号_标题.md）
+4. 每次动作后更新 ./PROGRESS.md（🎯当前状态 覆盖 / 📜操作时间线 追加）
+
+ink.skill 完整说明：https://github.com/PapainTea/ink-skill

@@ -1,0 +1,437 @@
+# init — 新建书 / 迁移老书参考
+
+> 本模块由 ink.skill 在用户意图为"新建书 / ink 迁移 / ink 初始化"时 Read。
+>
+> **两种场景**：
+> - **新建书**：从 `templates/book-skeleton/` 复制骨架 + 作者对话填充 5 个基础文件
+> - **迁移老书**：检测 `chapters/index.json` 和 `story/current_state.md` 存在 → 自动回填 PROGRESS.md + 各平台 init 文件
+>
+> 迁移流程详细步骤见本文件下方"迁移老书"段（阶段 6 补全）。
+
+---
+
+# 新建书流程
+
+**触发**：用户说"新建一本书" / "建一本新书" / "我想写一本 XX"。
+
+**核心思路**：直接对话产出，不用 Architect 那套重型 prompt。作者告诉 Claude 想写什么，Claude 边问边产出 5 个基础文件 + 初始化目录结构 + 创建 snapshots/0/。
+
+---
+
+## 1. 对话采集（边问边写，不一次性问完）
+
+按需采集，不要一次性问太多。最少需要：
+
+| 必问 | 用途 |
+|------|------|
+| **书名** | 决定目录名 `<父目录>/books/<书名>/` |
+| **题材方向** | 玄幻 / 都市 / 科幻 / 同人 / ... 决定写作风格倾向 |
+| **主角设定** | 一两句话即可：身份 + 核心优势 + 性格底色 |
+| **故事梗概** | 一段话：起点 + 主线冲突 + 大致目标 |
+
+可选（不要一次问完，作者愿意补就补）：
+- 平台口味（起点 / 番茄 / 晋江 / ...）
+- 目标卷数 / 每章字数
+- 语言（默认中文）
+- 是否有特殊禁忌 / 不写的元素
+
+**对话原则**：
+- 作者说"随便"或拒绝细化时，Claude 直接产出合理默认值，不强迫用户决策
+- 不需要逐项填表——作者一段话讲完想法，Claude 自己提取 + 补全
+- 给作者看草稿，让作者改（不要假装一次成）
+
+---
+
+## 2. 产出 5 个基础文件
+
+收集到足够信息后，Claude 直接写出以下 5 个文件（写到 `<父目录>/books/<书名>/story/` 下）：
+
+| 文件 | 内容 | schema 参考 |
+|------|------|------------|
+| `story_bible.md` | 世界观 / 主角 / 阵营与角色 / 地理环境 / 标题与梗概 | §03 基础文件规范 |
+| `volume_outline.md` | 卷规划（至少第一卷）+ 黄金三章法则 | §03 |
+| `book_rules.md` | YAML frontmatter（主角锁定 / 题材锁 / 禁忌 / 疲劳词）+ 正文（叙事视角 / 核心冲突驱动）| §03 |
+| `current_state.md` | 第 0 章初始状态卡（7 个字段，全部填初始值）| §02 |
+| `pending_hooks.md` | 伏笔池表头 + 初始伏笔（最近推进列填 `0`）| §02 |
+
+**写法**：用 Write 工具一次写一个文件。每写完一个让作者看一眼（作者可以不看，但要给机会改）。
+
+---
+
+## 3. 自动初始化的 4 个空真相文件
+
+5 个基础文件写完后，Claude 自动创建 4 个空表头的真相文件：
+
+| 文件 | 初始内容 |
+|------|---------|
+| `particle_ledger.md` | 7 列表头 + `init-0` 行（`\| 0 \| - \| 0 \| 0 \| 0 \| 开书初始 \| init-0 \|`）|
+| `subplot_board.md` | 9 列表头（无数据行）|
+| `emotional_arcs.md` | 6 列表头（无数据行）|
+| `character_matrix.md` | 3 子表骨架（### 角色档案 / ### 相遇记录 / ### 信息边界，每个子表只有表头）|
+
+详细 schema 见 §02。
+
+---
+
+## 4. 初始化目录结构
+
+```bash
+BOOK_DIR=<父目录>/books/<书名>
+mkdir -p "$BOOK_DIR/story/audits"
+mkdir -p "$BOOK_DIR/story/snapshots"
+mkdir -p "$BOOK_DIR/chapters"
+```
+
+---
+
+## 5. 创建 snapshots/0/
+
+5 个基础文件 + 4 个空真相文件全部就位后，立刻 cp 一份到 `snapshots/0/`，作为"第 0 章虚拟快照"——后续 rework 第 1 章时需要从这个快照恢复。
+
+```bash
+SNAP_DIR="$BOOK_DIR/story/snapshots/0"
+mkdir -p "$SNAP_DIR"
+
+cp "$BOOK_DIR/story/current_state.md"       "$SNAP_DIR/"
+cp "$BOOK_DIR/story/particle_ledger.md"     "$SNAP_DIR/"
+cp "$BOOK_DIR/story/pending_hooks.md"       "$SNAP_DIR/"
+cp "$BOOK_DIR/story/chapter_summaries.md"   "$SNAP_DIR/" 2>/dev/null || echo "" > "$SNAP_DIR/chapter_summaries.md"
+cp "$BOOK_DIR/story/subplot_board.md"       "$SNAP_DIR/"
+cp "$BOOK_DIR/story/emotional_arcs.md"      "$SNAP_DIR/"
+cp "$BOOK_DIR/story/character_matrix.md"    "$SNAP_DIR/"
+```
+
+详细快照语义见 §10。
+
+---
+
+## 6. 创建空 chapters/index.json
+
+```bash
+echo "[]" > "$BOOK_DIR/chapters/index.json"
+```
+
+JSON 数组（不是 `{chapters: []}` 包裹），对齐原项目格式。
+
+---
+
+## 7. 完成后告诉作者下一步
+
+Claude 完成上述全部步骤后，主动告诉作者：
+
+> 「书已建好。下一步：
+> 1. 看一眼 `story/story_bible.md` 和 `story/volume_outline.md`，不满意可以告诉我改
+> 2. 准备好就说『写第 1 章』」
+
+不要默认作者立刻开始写。给一个停下来审阅的窗口。
+
+---
+
+## 8. 与原项目的差异
+
+| 原项目（Architect agent）| skill 模式 |
+|------------------------|-----------|
+| 单次 LLM call 一次性产出 5 个 section（temperature 0.8 / maxTokens 16384）| 多轮对话，按需问、按需产出 |
+| 用 `=== SECTION: <name> ===` 切分输出 | 直接 Write 单个文件 |
+| 严格 JSON schema 校验 | LLM 自己保证格式正确 + 作者审阅 |
+| 必须收齐所有信息才开始 | 作者愿意省略的字段直接给默认值 |
+
+skill 模式更轻——没有 Architect agent 的 system prompt 模板（节省几百行），靠对话自然推进。
+# 基础文件规范
+
+基础文件是一本书的"根基"，在新建书时由 Architect 生成或用户手写，之后每一轮写章、审稿、修订都会读它们。一共 5 个，其中 2 个可选。
+
+所有基础文件位于 `<父目录>/books/<书名>/story/` 下。
+
+---
+
+## 1. story_bible.md — 世界观设定
+
+**用途**：本书的"圣经"，定义世界、主角、势力、地图、书名与简介。所有 agent 都会读它，用来保证设定不漂移。
+
+**谁写**：Architect 初始化时生成草稿，用户可手动编辑补充。
+
+**谁读**：Writer / Auditor / Reviser / Planner / Composer 全链路都读。
+
+**格式**：5 个二级标题 section。
+
+```markdown
+## 01_世界观
+世界观设定、核心规则体系（时代框架、社会结构、能量/资源规则、世界核心定律等）
+
+## 02_主角
+主角设定：
+- 身份（社会身份/职业/出身）
+- 金手指（核心优势/能力）
+- 性格底色（3-5 个关键词）
+- 行为边界（3-5 条，什么事主角不会做）
+
+## 03_势力与人物
+主要势力及重要配角。每个配角必须写：
+- 名字
+- 身份
+- 核心动机
+- 与主角关系
+- 独立目标（不是工具人）
+
+## 04_地理与环境
+主要地图、核心场景、环境特色
+
+## 05_书名与简介
+- 书名（题材 + 核心爽点 + 主角行为式长书名）
+- 简介（300 字内，三选一）：
+  1. 冲突开篇法（困境 → 金手指 → 悬念）
+  2. 高度概括法（只挑主线 + 留悬念）
+  3. 小剧场法（经典桥段作引子）
+```
+
+---
+
+## 2. volume_outline.md — 卷纲
+
+**用途**：全书卷级规划，写章前 Writer/Planner 会读。
+
+**谁写**：Architect 生成草稿，用户强烈建议手动调整（这是全书骨架）。
+
+**谁读**：Planner / Composer / Writer / Auditor / Reviser。
+
+**格式**：
+
+```markdown
+## 第 1 卷：<卷名>
+- 章节范围：1-30
+- 核心冲突：<一句话>
+- 关键转折：
+  - 第 N 章：<转折点>
+- 收益目标：读完本卷读者应该获得什么爽点 / 期待什么
+
+## 第 2 卷：...
+
+### 黄金三章法则（前三章必须遵循）
+
+- **第 1 章：抛出核心冲突**
+  - 开篇直接进入冲突场景
+  - 禁止大段背景介绍 / 世界观灌输
+  - 第一段必须有动作或对话
+  - 章末核心矛盾必须浮出水面
+- **第 2 章：展现金手指 / 核心能力**
+  - 主角核心优势必须在本章初现
+  - 必须通过具体事件展示，不能只是描述
+  - 第一个小爽点必须在本章出现
+- **第 3 章：明确短期目标**
+  - 主角第一个阶段性目标必须确立
+  - 目标具体可衡量（不是"变强"这种虚的）
+  - 章尾钩子足够强，给读者追读理由
+```
+
+---
+
+## 3. book_rules.md — 本书规则
+
+**用途**：本书的硬性规则（YAML），以及叙事视角/冲突驱动的指导（正文）。Writer/Auditor 把它当硬约束。
+
+**谁写**：Architect 生成草稿，用户可调。
+
+**谁读**：Writer / Auditor / Reviser（作为 rule stack 加载）。
+
+**格式**：YAML frontmatter + 正文。
+
+```markdown
+---
+version: "1.0"
+protagonist:
+  name: <主角名>
+  personalityLock: [关键词1, 关键词2, 关键词3]        # 3-5 个
+  behavioralConstraints: [约束1, 约束2, 约束3]       # 3-5 条
+genreLock:
+  primary: <题材 id>                                 # 例 xianxia / urban
+  forbidden: [文风1, 文风2]                          # 禁止混入的 2-3 种文风
+numericalSystemOverrides:                            # 可选，仅数值系题材
+  hardCap: <硬上限>
+  resourceTypes: [资源1, 资源2]
+prohibitions:
+  - <本书级禁忌 1>
+  - <本书级禁忌 2>
+chapterTypesOverride: []
+fatigueWordsOverride: []                             # 覆盖题材默认的疲劳词列表
+additionalAuditDimensions: []                        # 追加自定义审稿维度
+enableFullCastTracking: false                        # 是否全员角色追踪
+
+length:                                              # 字数配置（canonical，详见 §04 / §09）
+  target: 4500                                         # 目标字数
+  softMinPct: 10                                       # softMin = target × (1 - 10%) = 4050
+  softMaxPct: 10                                       # softMax = target × (1 + 10%) = 4950
+  hardMinPct: 20                                       # hardMin = target × (1 - 20%) = 3600
+  hardMaxPct: 20                                       # hardMax = target × (1 + 20%) = 5400
+  countingMode: zh_chars                               # zh_chars / en_words
+  enforceSoftMin: true                                 # 字数 < softMin 时默认扩写（可 PRE_WRITE_CHECK 声明例外跳过）
+  enforceHardMin: true                                 # 字数 < hardMin 时硬 block 必须扩写
+
+hardRules:                                           # 硬性规则开关（默认全开，作者可关掉某项）
+  banDash: true                                        # 禁止破折号 ——
+  banBushiErshi: true                                  # 禁止「不是…而是…」句式
+  banAnalysisTerms: true                               # 禁止分析术语（核心动机/信息边界 等）
+  banCollectiveShock: true                             # 禁止集体反应套话
+  banMarkdownLeakage: true                             # 禁止 md 结构化标记泄漏（--- / ### / ** / 列表等）
+  maxMarkerWordsPer3000: 1                             # 转折/惊讶标记词上限（每 3000 字 1 次）
+
+pipeline:                                            # 写章流程行为开关
+  autoRunAudit: true                                   # Step 7 审计默认必跑（详见 §04 Step 7）
+  autoRunVerify: true                                  # Step 12 完成后必跑 verify-chapter.py（详见 §04 Step 12）
+  autoExpandIfShort: true                              # 字数不足时自动扩写循环
+---
+
+## 叙事视角
+（第几人称，视角切换规则，叙事距离偏好）
+
+## 核心冲突驱动
+（本书的核心矛盾和推动力来源）
+```
+
+---
+
+## 4. current_state.md — 当前状态卡
+
+**用途**：当前章节结束时的"状态快照卡"，每写完一章被覆盖一次。
+
+**谁写**：Architect 生成初始版（第 0 章），之后 Writer/Settler 每章覆盖。
+
+**谁读**：所有 agent（最重要的上下文之一）。
+
+**格式**：
+
+```markdown
+| 字段       | 值                    |
+|------------|-----------------------|
+| 当前章节   | <N>                   |
+| 当前位置   | <地点>                |
+| 主角状态   | <情况>                |
+| 当前目标   | <目标>                |
+| 当前限制   | <限制条件>            |
+| 当前敌我   | <敌对/盟友关系>       |
+| 当前冲突   | <当前冲突>            |
+```
+
+---
+
+## 5. author_intent.md — 作者意图（可选）
+
+**用途**：用户向 AI 表达的"我想写成什么样"、全书主题、风格偏好。
+
+**谁写**：用户手写（Architect 不生成）。
+
+**谁读**：Writer / Reviser（作为软指导，不是硬约束）。
+
+**格式**：自由 Markdown。
+
+---
+
+## 6. current_focus.md — 当前聚焦（可选）
+
+**用途**：用户在当前阶段想强调的内容（例如"最近 3 章重点铺设 <支线 X>"、"降低感情戏比重"）。
+
+**谁写**：用户手写，可随时更新。
+
+**谁读**：Writer / Planner / Composer。
+
+**格式**：自由 Markdown，通常很短（几句话 ~ 一段）。
+
+---
+
+## 迁移老书到 ink.skill 形态
+
+**触发词**：`ink 迁移` / `迁移本书` / `升级到 skill 版本` / `ink migrate`。
+
+### 识别条件
+
+skill 一激活，检查当前书根是否为"老书"：
+- 存在 `chapters/index.json` 和 `story/current_state.md` 且至少有 1 章已写
+- **不存在** `PROGRESS.md`（存在则走幂等性补齐路径，见下方）
+
+若识别为老书 → 提示作者"检测到老书，是否迁移？"，得到确认后执行迁移流程。
+
+### 幂等性检查（R8）
+
+重复执行"ink 迁移"是安全的：
+- 若 `PROGRESS.md` **已存在**：仅**补齐缺段**，不全量重写；追加操作时间线前检测末 5 条中是否已有"迁移完成"事件，有则跳过追加
+- 若对应平台 init 文件（CLAUDE.md / AGENTS.md / GEMINI.md / .cursorrules）**已存在**：不覆盖，提示作者"init 文件已存在，保持不动"
+
+### 迁移流程（6 步）
+
+**Step 1**: Read `chapters/index.json`
+- 获取章节清单 + status + wordCount + createdAt/updatedAt
+- 计算 `last_approved_chapter` = 最后一条 `status=approved` 的章号
+- 计算 `next_chapter` = 最后一条 `status != approved` 的章号，或 `last_approved_chapter + 1`
+
+**Step 2**: Read `story/current_state.md`
+- 获取故事当前状态描述
+- 用于填充 PROGRESS.md 的"当前状态"段
+
+**Step 3**: 聚合 `story/audits/ch-*.md`
+- 遍历所有文件，抽取 severity=followup 的条目
+- 记录每条的：章号来源 / 原文 / 涉及章节（若提及）
+
+**Step 4**: 生成 / 补齐 `PROGRESS.md`
+
+**情况 A：PROGRESS.md 不存在（首次迁移）**
+
+从 `templates/PROGRESS.template.md` 复制模板，填充占位符：
+- `{{book_name}}` → 从当前书目录名推断
+- `{{last_approved_chapter}}` / `{{word_count}}` / `{{approved_date}}` → 从 Step 1 结果
+- `{{next_chapter}}` → 从 Step 1 结果
+- `{{last_action_timestamp}}` → 当前 ISO 时间
+- `{{last_action_summary}}` → `迁移完成（原 markdown-instruction 形态 → ink.skill）`
+- `{{book_root_abs_path}}` → 当前书根绝对路径
+- `{{ts1}}` / `{{action1}}` → 与 last_action 同
+
+活跃 followup 段：把 Step 3 聚合出的条目写入，格式：
+```
+- [ ] ch{来源章} {原文截取 80 字内}
+```
+
+在 PROGRESS.md 末尾（"作者笔记"段**之前**）追加一段"📋 迁移原始数据（临时）"：
+```markdown
+## 📋 迁移原始数据（临时，作者核对无误后可删）  <!-- migration-dump -->
+
+> 迁移时自动把 audits/ 的完整 severity 明细 dump 到这里，便于作者核对。
+> 核对完成后可以整段删除本段。
+
+<逐章 dump 每个 audit 的完整内容，按 ch 升序>
+```
+
+**情况 B：PROGRESS.md 已存在（幂等）**
+
+- 只补齐缺段，按 SKILL.md §4 容错规则
+- 操作时间线段检查末 5 条是否已含"迁移完成"，有则跳过追加
+- 不重新 dump 迁移原始数据段（首次已有）
+- 不覆盖作者笔记段
+
+**Step 5**: 生成当前平台的 init 文件
+
+按 SKILL.md §5 规则（当前平台 agent 自写）：
+- Claude Code → 从 `templates/init/CLAUDE.md.template` 填充 `{{book_name}}` 写入当前书根 `CLAUDE.md`
+- Codex → `AGENTS.md.template` → `AGENTS.md`
+- Gemini CLI → `GEMINI.md.template` → `GEMINI.md`
+- Cursor → `cursorrules.template` → `.cursorrules`
+
+若 init 文件已存在 → 跳过不覆盖。
+
+**Step 6**: 向作者报告
+
+输出一段总结：
+- 本次迁移覆盖章节范围（如 ch1–15）
+- 生成的文件清单（PROGRESS.md、当前平台 init 文件）
+- 活跃 followup 条数
+- 老版 `<父目录>/books/CLAUDE.md`（v1.0.x markdown 分发） + `.claude-modules/` 与新 init 文件并存说明（R11）：
+  > 老版 `CLAUDE.md` 与新 init 不冲突。你可以保留（作备份，新版更精确）或删除（不再回滚 v1.0.x 时）。建议先跑 1-2 个会话验证无问题再决定删除。
+- 下一步建议（新写章、审计、结算等）
+
+**不删除旧文件**：skill 永不主动删除 v1.0.x 分发的 `books/CLAUDE.md` 和 `.claude-modules/`（R11）。
+
+### 误迁移时的回滚
+
+若作者反悔：
+1. 删除本次生成的 `PROGRESS.md` 和 `<platform>.md`
+2. 不需要回滚其他文件（迁移不改 truth files、不动章节正文、不创建快照）
+
+迁移流程本身**设计为零破坏**：只读老数据，只新增 PROGRESS.md 和 init 文件。
