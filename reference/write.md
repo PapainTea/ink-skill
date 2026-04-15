@@ -649,6 +649,7 @@ python3 .../verify-chapter.py <books-root> <书名> <N> --allow-short
 | **Step 6 字数**：`softMin > 字数 ≥ hardMin`（偏短但未触底）| 走 §04 Step 6.3 的一次扩写循环 |
 | **Step 9 chapter_summaries 缺 ch N 行** | 基于正文生成 ch N 摘要行追加（8 列：章节/标题/出场/关键事件/状态变化/伏笔动态/情绪/类型）|
 | **Step 9 current_state 当前章节 < N** | 整体覆盖 current_state.md 使"当前章节" = N，其他 7 字段按本章最新状态重写 |
+| **Step 7 Followup**（v0.1.10）：`PROGRESS.md 活跃 followup 段与 audits 聚合不一致` | 重跑 verify 时加 `--fix-progress` 参数，脚本会自动重写 PROGRESS.md 的 `📌 活跃 followup` 段（只改这一段，其他段不动）。适用于：audit md 的 `## Followup` 段是对的，只是漏写了 Step 9 Settler 末的聚合动作 |
 
 ### 不能盲目自动补救的 ❌（必须硬停询问作者）
 

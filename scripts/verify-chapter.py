@@ -446,6 +446,45 @@ def verify_layer3(book_dir: Path, N: int) -> tuple[bool, list]:
 
 
 # ==============================================================
+# Followup 修复（--fix-progress）
+# ==============================================================
+
+def recompute_progress_followup(book_dir: Path) -> tuple[bool, int]:
+    """
+    聚合所有 audits/ch-*.md `## Followup` 段里的 [ ] 条目，重写 PROGRESS.md 的
+    `## 📌 活跃 followup` 段。只覆盖这一段，其他段一字不动。
+    返回 (修改成功, 写入条数)。
+    """
+    audits_dir = book_dir / "story/audits"
+    progress_path = book_dir / "PROGRESS.md"
+    if not progress_path.exists():
+        return (False, 0)
+    open_items = []
+    if audits_dir.exists():
+        def _ch_num(p: Path) -> int:
+            m = re.search(r"ch-(\d+)", p.name)
+            return int(m.group(1)) if m else 0
+        for ap in sorted(audits_dir.glob("ch-*.md"), key=_ch_num):
+            _, items = _parse_audit_followup_section(ap)
+            open_items.extend(items)
+    text = progress_path.read_text(encoding="utf-8")
+    new_block = "## 📌 活跃 followup  <!-- replace-on-update; 从 story/audits/ 重算 -->\n\n"
+    new_block += "> 每次 Settler 结束前从所有 `story/audits/ch-*.md` 的 `## Followup` 段里 `[ ]` 条目聚合。\n\n"
+    if not open_items:
+        new_block += "- 暂无活跃 followup\n"
+    else:
+        for item in open_items:
+            new_block += item + "\n"
+    new_block += "\n"
+    pattern = re.compile(r"^## 📌 活跃 followup.*?(?=^## )", re.MULTILINE | re.DOTALL)
+    if not pattern.search(text):
+        return (False, 0)  # PROGRESS.md 无该段，拒绝盲写
+    new_text = pattern.sub(new_block, text)
+    progress_path.write_text(new_text, encoding="utf-8")
+    return (True, len(open_items))
+
+
+# ==============================================================
 # Main
 # ==============================================================
 
@@ -526,6 +565,11 @@ def main():
         action="store_true",
         help="允许字数低于 softMin（需在 PRE_WRITE_CHECK 声明）",
     )
+    parser.add_argument(
+        "--fix-progress",
+        action="store_true",
+        help="仅在检测到 PROGRESS.md 活跃 followup 段与 audits 聚合不一致时，自动重写该段（只覆盖 📌 活跃 followup 段，其他段不动）。重写完成后重跑一遍 Layer 2 再输出。",
+    )
     args = parser.parse_args()
 
     book_dir = Path(args.books_root) / args.book_name
@@ -539,6 +583,20 @@ def main():
     ok1, errs1 = verify_layer1(book_dir, args.N)
     ok2, errs2 = verify_layer2(book_dir, args.N, allow_short=args.allow_short)
     ok3, errs3 = verify_layer3(book_dir, args.N)
+
+    # --fix-progress: 若 Layer 2 里有 followup 段不一致错误，重写后重跑 Layer 2
+    if args.fix_progress:
+        needs_fix = any(
+            e.startswith("FOLLOWUP:") and "活跃 followup 段与 audits 聚合不一致" in e
+            for e in errs2
+        )
+        if needs_fix:
+            fixed, n = recompute_progress_followup(book_dir)
+            if fixed:
+                print(f"🔧 --fix-progress 已生效：PROGRESS.md 📌 活跃 followup 段重写 {n} 条\n")
+                ok2, errs2 = verify_layer2(book_dir, args.N, allow_short=args.allow_short)
+            else:
+                print("⚠️ --fix-progress 无法生效：PROGRESS.md 不存在或无 📌 活跃 followup 段\n")
 
     l1 = classify_l1_errors(errs1)
     l2 = classify_l2_errors(errs2)
