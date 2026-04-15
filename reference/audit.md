@@ -231,6 +231,72 @@ LLM 综合判断，可能存在争议：
 - 爽点虚化
 
 对这 3 类的划分不影响输出格式，只影响 LLM 在每个维度上投入的分析深度和佐证要求。
+
+---
+
+## 附录 A：敏感词检测（维度 38，规则性）
+
+> 从 inkOS sensitive-words.ts 迁入。非 LLM 判断，确定性词表匹配。
+
+维度 38 是规则性检测，不属于 37 维度的主观判断类，作为附加维度常驻启用（与维度 32/33 一样永远启用）。
+
+- 命中政治敏感词 → `severity: critical`（必须删除，无法发布）
+- 命中色情/极暴力词 → `severity: warning`（建议替换或弱化）
+- 命中自定义词（`book_rules.md` 中 `customSensitiveWords` 字段）→ `severity: warning`
+
+完整词表见 `reference/sensitive-words.md`。
+
+---
+
+## 附录 B：Meta 泄漏规则库（非 LLM 规则性检测）
+
+> 从 inkOS meta-leaks.ts 迁入。用于在审计章节时扫描正文是否含 meta-information 泄漏（破坏读者沉浸感）。
+> 这是**规则性检测**（确定性 regex 或字符串匹配），不是 LLM 主观判断。
+
+### 1. 章节 meta 引用泄漏（warning）
+
+正文出现以下 pattern → severity=warning：
+
+**显式章节引用**（`第X章`，排除标题行和书名号包裹的情况）：
+- 正则：`/第[一二三四五六七八九十百千万\d]+章/g`
+- 排除：以 `#` 开头的标题行；被 `《》` 包裹的书名内部
+- 建议："如果是角色讨论书中书内容则可忽略，否则改为具体情节描述替代章节号引用"
+
+**隐式章节引用**（上/前/后几章 + 动词）：
+- 正则：`/(?:上|前|后)几?章(?:提到|说过|出现|描述|讲过|写过|说的|提过)/g`
+- 建议："改为具体情节回忆或时间描述，避免引用章节概念"
+
+### 2. Hook ID 泄漏（critical）
+
+正文出现形如 `H001`、`H002` 等内部 hook 标识符 → severity=critical：
+
+- 正则（带中文边界）：`H\d{3,}`（中文标点或空白或行首/行尾为边界）
+- 建议："删除钩子 ID，改用具体情节描述"
+
+### 3. 系统标签泄漏（critical）
+
+正文出现 `=== UPPERCASE_TAG ===` 格式的系统分隔标签 → severity=critical：
+
+- 正则：`/===\s*[A-Z_]+\s*===/g`
+- 说明：如 `=== UPDATED_LEDGER ===`、`=== CHAPTER_CONTENT ===` 等，这些是 LLM 输出格式残留
+- 建议："删除系统标签，这些内容不应出现在正文中"
+
+### 4. JSON 字段名泄漏（critical）
+
+正文出现以下 camelCase 内部字段名 → severity=critical：
+
+词表：`hookOps`、`hook_id`、`startChapter`、`expectedPayoff`、`currentStatePatch`、`chapterSummary`、`runtimeStateDelta`、`subplotOps`、`emotionalArcOps`、`characterMatrixOps`、`lastAdvancedChapter`、`currentLocation`、`protagonistState`、`currentGoal`、`currentConstraint`、`currentAlliances`、`currentConflict`
+
+- 建议："删除内部字段名，改用自然语言描述"
+
+### 5. 审计集成
+
+每次 Step 7 审计扫描本附录定义的 4 类 pattern。命中后按 severity 上报 issue，category 为 `meta-reference` 或 `system-id-leak`。
+
+Meta 泄漏检测与写后校验（12 条）并行，不互相替代：
+- 写后校验（Step 6）：重点查禁止句式/Markdown 标记/机械规则
+- Meta 泄漏（Step 7 审计附录 B）：重点查 meta 引用/系统 ID 泄漏/JSON 字段名
+
 # 写后校验
 
 ## 用途
