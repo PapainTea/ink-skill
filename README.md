@@ -149,6 +149,10 @@ AI 会自动聚合 `chapters/index.json` + `story/current_state.md` + `story/aud
 
 ## 版本
 
+- **v0.1.8** — 补回 inkOS 漏迁的 **Titler 阶段**：写章 pipeline 新增 Step 8.5「章节标题最终化」，Step 8 修订循环退出后独立跑一轮"标题大师"prompt，基于定稿正文重取文学性标题，覆盖 Step 5 Writer 临时标题。Phase 架构从 3 轮 LLM 调用升为 4 轮（write / observer / settler / titler）
+- **v0.1.7** — 工程串联补齐：write.md 显式描述 Phase 1/2a/2b 3 阶段架构 + observer.md 补"被谁调用"说明
+- **v0.1.6** — 精简分发（删开发者 tests/ 和空 docs/）
+- **v0.1.5** — 补齐 7 个 inkOS 漏迁模块（sensitive-words / chapter-analyzer / observer / fanfic / meta-leaks / length-normalizer + test fixture）
 - **v0.1.4** — `book_rules.yaml` → `book_rules.md`（对齐 inkOS 原版格式，支持自由规则段）+ 新建书强制列 15 体裁流程 + 审计历史文档
 - **v0.1.3** — 体裁触发词 + README 升级说明
 - **v0.1.2** — 关键迁移错误修复（错译、发明文件、缺 4 真相文件、缺 15 体裁）
