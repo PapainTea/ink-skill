@@ -95,7 +95,7 @@ python3 ink-skill/scripts/bootstrap.py --platform auto
 
 任何含有以下关键词的消息都会激活本 skill：
 
-`ink` / `Ink` / `写书` / `写小说` / `写第 N 章` / `续写` / `连写` / `连写 N 章` / `连续写作` / `审计章节` / `润色章节` / `修订` / `扩写` / `压缩` / `新建书` / `新建章节` / `ink 初始化` / `ink 迁移` / `followup` / `伏笔` / `粒子账本` / `人物矩阵` / `世界观` / `章节大纲` / `真相文件` / `结算章节` / `章节结算` 等。
+`ink` / `Ink` / `写书` / `写小说` / `写第 N 章` / `续写` / `连写` / `连写 N 章` / `连续写作` / `审计章节` / `润色章节` / `修订` / `扩写` / `压缩` / `新建书` / `新建章节` / `ink 初始化` / `ink 迁移` / `followup` / `伏笔` / `粒子账本` / `人物矩阵` / `世界观` / `章节大纲` / `真相文件` / `结算章节` / `章节结算` / `玄幻` / `仙侠` / `都市` / `恐怖` / `悬疑` / `修真` / `科幻` / `浪漫` / `治愈` / `异世界` / `爬塔` / `系统末日` / `地下城核心` / `xuanhuan` / `xianxia` / `urban` / `horror` / `cultivation` / `progression` / `sci-fi` / `romantasy` / `cozy` / `isekai` / `tower-climber` / `litrpg` / `dungeon-core` / `system-apocalypse` / `other` 等。
 
 ## 首次使用
 
@@ -149,7 +149,82 @@ AI 会自动聚合 `chapters/index.json` + `story/current_state.md` + `story/aud
 
 ## 版本
 
-- **v0.1.0**（当前）— skill 化首版，迁移、新建、写章、审计、修订、结算全流程就绪
+- **v0.1.3** — 体裁触发词 + README 升级说明
+- **v0.1.2** — 关键迁移错误修复（错译、发明文件、缺 4 真相文件、缺 15 体裁）
+- **v0.1.1** — 连写 pipeline（batch-write）
+- **v0.1.0** — skill 化首版，迁移、新建、写章、审计、修订、结算全流程就绪
+
+## 升级历史与重要说明
+
+### v0.1.2（重要修复）
+
+v0.1.0 和 v0.1.1 有**关键迁移错误**，如果你基于这两个版本装过 skill，请立刻升级到 v0.1.2+：
+
+**错误原因**：首版 skill 重写时 AI 凭记忆构造文件列表和翻译，没有对照原 inkOS 源码，造成：
+
+1. **错译** — skill 内部把 `particle_ledger.md` 的中文名写成"粒子账本"，应为 **"资源账本"**；`character_matrix.md` 写成"人物矩阵"，应为 **"角色交互矩阵"**
+2. **发明了不存在的文件名** — skill 模板引用了 `worldbook.md` / `foreshadow.md` / `timeline.md` 这三个文件，**inkOS 原项目根本没有这些文件**
+3. **漏了真实存在的 4 个真相文件** — 应该有的 `story_bible.md`（世界观设定）/ `pending_hooks.md`（伏笔池）/ `subplot_board.md`（支线进度板）/ `emotional_arcs.md`（角色情感弧线）全部没包含进 book-skeleton
+4. **15 个体裁配置完全没迁** — 原 inkOS 有 15 个体裁（xuanhuan/xianxia/urban/horror/cultivation/sci-fi/... 各带 numericalSystem/powerScaling/fatigueWords/auditDimensions 等配置），首版一个都没搬过来
+
+**v0.1.2 修复内容**：
+
+| 错误 | 修正 |
+|------|------|
+| `worldbook.md` 发明文件 | 删除，改用 `story_bible.md`（世界观设定）|
+| `foreshadow.md` 发明文件 | 删除，改用 `pending_hooks.md`（伏笔池）|
+| `timeline.md` 发明文件 | 删除（inkOS 没有此文件，相关内容在其他 truth 里处理）|
+| 缺 `subplot_board.md` | 新增到 book-skeleton |
+| 缺 `emotional_arcs.md` | 新增到 book-skeleton |
+| "粒子账本" 错译 | 规范为"资源账本"（触发词里保留错词做 alias，不 break 老用户）|
+| "人物矩阵" 错译 | 规范为"角色交互矩阵"（保留错词 alias）|
+| 15 体裁 `.md` 没迁 | 全部迁到 `genres/`（xuanhuan/xianxia/dungeon-core/system-apocalypse/litrpg 5 个数值型 + urban/horror/cultivation/progression/sci-fi/romantasy/cozy/isekai/tower-climber/other 10 个非数值型）|
+| 缺 v1.0.x markdown 版里原有的 `book_rules.md` 形式 | **v0.1.2 暂时保留 `.yaml` 形式**，v0.2.0 会改回 `.md + YAML frontmatter`（见下文"已知遗留"）|
+
+### v0.1.3（体裁触发词 + 文档）
+
+- SKILL.md 触发词新增 15 个体裁名（中文 + 英文 id），现在说"写一本玄幻"、"这是 xuanhuan"等都能触发
+- 本 README 新增"升级历史与重要说明"
+
+### 老版本升级指南
+
+**如果你之前装过 v0.1.0 或 v0.1.1**（装在 `~/Desktop/books/ink-skill/` 或类似位置）：
+
+```bash
+# 1. 拉最新（包含 v0.1.2 + v0.1.3 的所有修正）
+cd <你放 ink-skill 的位置>
+git pull origin main
+
+# 2. 如果你已经让 v0.1.0/v0.1.1 给某本书生成过 PROGRESS.md，那份 PROGRESS.md 含错误的真相文件表格，需要重生：
+rm <你的书>/PROGRESS.md
+
+# 3. 重开 AI 会话，对某本书说"ink 迁移"，skill 会用新模板重生正确的 PROGRESS.md + init 文件
+```
+
+**如果你之前装过 v1.0.x markdown 分发版**（即 README 顶部提到的 [ink_writer 仓库](https://github.com/PapainTea/ink-writer)）：
+
+你的 markdown 版本从未有过上述翻译错误或文件缺失（错误只存在于 skill 化过程中）。你可以：
+- **继续用 v1.0.x**，不升级，没问题
+- **升级到 skill 版本**：按 README 开头"快速开始"安装 ink.skill，然后对每本书说"ink 迁移"——迁移流程**零破坏**：不改正文、不碰 truth files，只新增 PROGRESS.md + 当前平台的 init 文件
+
+### 已知遗留（v0.2.0 会处理）
+
+- **`book_rules.yaml` vs `book_rules.md`**：原 inkOS 和 v1.0.x markdown 分发都用 `book_rules.md`（含 YAML frontmatter + markdown 自由叙述规则）。v0.1.x 系列用了 `.yaml`，缺少"作者对 AI 嘱咐的自由文段"的能力。v0.2.0 会改回 `.md + YAML frontmatter`，并兼容读取旧 `.yaml`
+- **darwin-skill 优化 SKILL.md**：v0.1.x 系列跳过，v0.2.0 会跑一轮 darwin 迭代
+- **bootstrap.py 加 `--force`**：重装参数，v0.1.x 不做
+
+### 从原 inkOS 迁过来的东西一览
+
+以下内容**原封不动**从 `/Users/admin/Codex/Project/inkOS/` 提取（保证 skill 行为和原项目一致）：
+
+- 15 体裁配置（`genres/*.md`）
+- 37 维度章节审计（`reference/audit.md` 含的 continuity.ts 内容）
+- 5 种修订模式（`reference/revise.md`）
+- 25 条创作规则（`reference/write.md`）
+- 7 真相文件 schema（`reference/truth-schema.md`）
+- 伏笔治理（`reference/snapshot.md` 含 hook-governance.ts 内容）
+- 新建书流程（`reference/init.md`）
+- 连写 pipeline（`reference/batch-write.md`，v0.1.1 加）
 
 ## License
 
