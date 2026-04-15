@@ -10,7 +10,64 @@
 
 ---
 
-# 新建书流程
+## 新建书流程（必读）
+
+**Step 0 — 强制列题材**：用户说"新建一本 XX"时，**第一件事**不是问故事设定，而是**列出全部 15 个可选题材**（含中文名 + 英文 id + 是否数值型），让作者明确选一个：
+
+```
+📚 ink.skill 支持的 15 个体裁：
+
+### 数值型体裁（会创建 particle_ledger.md 资源账本）
+
+1. **玄幻** (xuanhuan) — 典型爽点：打脸 / 升级突破 / 收益兑现
+2. **仙侠** (xianxia) — 修炼体系严格的东方幻想
+3. **地下城核心** (dungeon-core) — 你就是副本本体
+4. **系统末日** (system-apocalypse) — 末世生存 + 游戏化系统
+5. **LitRPG** (litrpg) — 完全游戏化的世界
+
+### 非数值型体裁（不创建 particle_ledger.md，只用 subplot_board + character_matrix）
+
+6. **都市** (urban) — 现代都市背景
+7. **恐怖/悬疑** (horror) — 心理恐怖、超自然、悬疑推理
+8. **修真** (cultivation) — 修炼色彩较轻的东方玄幻
+9. **渐进成长** (progression) — 偏西式进化设定
+10. **科幻** (sci-fi) — 硬科幻 / 软科幻
+11. **浪漫奇幻** (romantasy) — 爱情 + 奇幻
+12. **治愈/轻松** (cozy) — 慢生活、日常、低冲突
+13. **异世界转生** (isekai) — 穿越 / 重生 / 异世
+14. **爬塔** (tower-climber) — 层层关卡、step-by-step 挑战
+15. **其他/通用** (other) — 不明确分类时的 fallback
+
+请告诉我你要写的是哪一种？（回复体裁中文名或 id 即可）
+```
+
+**不要跳过这一步**。即使作者已经告诉你故事大概，也要先让他确认体裁——因为体裁决定：
+- 是否创建 `particle_ledger.md`（只有 5 个数值型体裁创建）
+- 启用哪些审计维度（从 37 维度里选）
+- 典型章节类型（战斗章/布局章/过渡章/回收章等）
+- 禁忌词 / 疲劳词 / 爽点类型
+
+**Step 1 — 读取对应题材配置**：作者选完后，Read `<skill_root>/genres/<genre_id>.md`，把 YAML frontmatter + 正文全部纳入上下文。
+
+**Step 2 — 从 book-skeleton 复制骨架到 `<父目录>/books/<书名>/`**：
+
+按体裁类型决定是否复制 `particle_ledger.md`：
+- 数值型体裁 → 复制 7 truth files（含 particle_ledger）+ `book_rules.md` + `volume_outline.md`（初始为空大纲）+ `chapters/` + `snapshots/0/`
+- 非数值型体裁 → 同上但 **跳过 particle_ledger.md**，因为这个体裁不用数值系统
+
+**Step 3 — 填充 `book_rules.md` 的 frontmatter**：
+- `genre.id` = 作者选的 id
+- `genre.name` = 对应中文名
+- `{{book_name}}` = 作者给的书名
+- `{{created_at}}` = 当前时间
+
+**Step 4 — 对话式填充基础设定**：和作者对话填 `story_bible.md`（世界观）/ `volume_outline.md`（第一卷 10-20 章大纲）/ `character_matrix.md`（主角 + 2-3 配角基本档案）。
+
+**Step 5 — 生成当前平台的 init 文件**（CLAUDE.md / AGENTS.md 等）+ 初始化 `PROGRESS.md`。
+
+---
+
+# 新建书流程（详细步骤）
 
 **触发**：用户说"新建一本书" / "建一本新书" / "我想写一本 XX"。
 
