@@ -149,6 +149,7 @@ AI 会自动聚合 `chapters/index.json` + `story/current_state.md` + `story/aud
 
 ## 版本
 
+- **v0.1.11** — verify-chapter.py 加 `--fix-progress` 参数：检测到 PROGRESS.md 活跃 followup 段与 audits 聚合不一致时，自动重写 `## 📌 活跃 followup` 段（只覆盖这一段，其他段一字不动）。默认不加参数仍只报错不改。write.md Step 12.1 可自动补救表加一行把 followup 不一致归为可盲修类。安全边界：PROGRESS.md 不存在或无该段时拒绝盲写；其他 Layer 2 错误不会被 --fix-progress 触发。
 - **v0.1.10** — **Followup 机制落地**：v0.1.9 前 `followup` severity 在 audit.md 里有定义但 0 使用（跨章监测项全部倾倒进 current_state.md 审计纠偏段，下一章 Settler 覆盖时 LLM 凭心情决定保留哪条，每章都在静默丢 followup）。v0.1.10 把这套从"推荐"升级为"工程硬约束"：audit md 末尾**强制** `## Followup` 段（缺段 = 审计未完成）；Step 7 第一动作是**继承**上章 `[ ]` 条目并逐条标 `[x]` 消化 / `[ ]` 继续；Step 9 Settler 最后动作是**重算** PROGRESS.md `📌 活跃 followup` 段（聚合所有 audits）；verify-chapter.py 加 2 条 Layer 2 检查双重兜底。起因：镜源逆刻 ch17 实战时发现 ch16 `[warning] 六叔姓陈, 若 ch17+ 引入其他陈姓角色需注意区分` 被 Settler 覆盖 current_state 时静默丢失
 - **v0.1.9** — **pipeline 执法强化**：SKILL.md §7 新增强制律 9「验证必贴律」（写章/连写/重分析 的最后一条消息必须原样贴 verify-chapter.py 的 13 条 ✅/❌ stdout，口头总结视为未跑）+ §2 新增步骤 c.5 健康体检（已存在章节时自动对最新章跑 verify，发现 ❌ 先警告作者再继续）+ write.md Step 12 强调"这是给作者看的唯一完成证据" + batch-write.md §14.3 加"未贴 stdout = 本章作废"硬律 + reanalyze 同步要求贴 stdout。起因：发现某 agent 绕过 verify 写了 14 章、快照缺 7 个、index.json 断档、truth files 不一致，新会话进来若没体检就继续写等于在脏地基上盖楼
 - **v0.1.8** — 补回 inkOS 漏迁的 **Titler 阶段**：写章 pipeline 新增 Step 8.5「章节标题最终化」，Step 8 修订循环退出后独立跑一轮"标题大师"prompt，基于定稿正文重取文学性标题，覆盖 Step 5 Writer 临时标题。Phase 架构从 3 轮 LLM 调用升为 4 轮（write / observer / settler / titler）
