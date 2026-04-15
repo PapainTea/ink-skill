@@ -59,7 +59,8 @@ Read `<书根>/PROGRESS.md`。
 
 | 用户意图 | 加载模块 | 典型触发词 |
 |---------|---------|-----------|
-| 写章节（新章、续写、连写） | `reference/write.md` | 写第 N 章 / 续写 / 连写 N 章 / 连续写作 |
+| 写单章（新章、续写） | `reference/write.md` | 写第 N 章 / 续写 / 写下一章 |
+| 连写（批量写多章） | `reference/batch-write.md` | 连写 / 连写 N 章 / 连续写作 / 批量写 / 连续写 N 章 |
 | 审计章节 | `reference/audit.md` | 审计章节 / 审计第 N 章 / 审稿 |
 | 修订章节（润色、扩写、压缩、重写） | `reference/revise.md` | 润色 / 扩写 / 压缩 / 修订 / 改写 / 重写 |
 | 新建书 / 迁移老书 / 初始化 | `reference/init.md` | 新建一本 / ink 初始化 / ink init / ink 迁移 / ink migrate |
