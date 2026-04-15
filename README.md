@@ -149,6 +149,7 @@ AI 会自动聚合 `chapters/index.json` + `story/current_state.md` + `story/aud
 
 ## 版本
 
+- **v0.1.9** — **pipeline 执法强化**：SKILL.md §7 新增强制律 9「验证必贴律」（写章/连写/重分析 的最后一条消息必须原样贴 verify-chapter.py 的 13 条 ✅/❌ stdout，口头总结视为未跑）+ §2 新增步骤 c.5 健康体检（已存在章节时自动对最新章跑 verify，发现 ❌ 先警告作者再继续）+ write.md Step 12 强调"这是给作者看的唯一完成证据" + batch-write.md §14.3 加"未贴 stdout = 本章作废"硬律 + reanalyze 同步要求贴 stdout。起因：发现某 agent 绕过 verify 写了 14 章、快照缺 7 个、index.json 断档、truth files 不一致，新会话进来若没体检就继续写等于在脏地基上盖楼
 - **v0.1.8** — 补回 inkOS 漏迁的 **Titler 阶段**：写章 pipeline 新增 Step 8.5「章节标题最终化」，Step 8 修订循环退出后独立跑一轮"标题大师"prompt，基于定稿正文重取文学性标题，覆盖 Step 5 Writer 临时标题。Phase 架构从 3 轮 LLM 调用升为 4 轮（write / observer / settler / titler）
 - **v0.1.7** — 工程串联补齐：write.md 显式描述 Phase 1/2a/2b 3 阶段架构 + observer.md 补"被谁调用"说明
 - **v0.1.6** — 精简分发（删开发者 tests/ 和空 docs/）

@@ -130,6 +130,16 @@ reviser 按 `.claude-modules/revise.md` 的 spot-fix 模式执行：只动问题
 
 **理由**：truth files 是下一章 context 的基础，结算不及时会让下一章 planner 读到错误的状态卡。流程审核是**最后的兜底**，你（LLM）自己可能漏 Step 10/11，verify 脚本会把漏掉的环节用 ❌ 显式抓出来，作者一眼就能看到。
 
+### ⚠️ 未贴 stdout = 本章作废（连写专用硬律）
+
+连写场景下，LLM 有天然的偷懒诱因——一次回复里处理 14 章，用"ch 1-14 全部通过"一笔带过就想往下走。**禁止**。
+
+强制约束（见 SKILL.md §7 强制律 9）：
+- **每章**都必须单独贴一块 verify stdout（13 条 ✅/❌ 环节），不允许只贴一次汇总
+- 若作者看到一段"ch N-M 均已完成"但没看到 M-N+1 份 verify stdout → **已写的那几章视为作废，必须逐章重跑 verify 并贴输出**
+- 在 stdout 贴出来之前，**index.json 里那章的 status 不允许写 `approved`**（最多写 `draft`）
+- 即使用了 `run_in_background` 跑连写，每章回报时也必须把当章 verify stdout 贴出来
+
 ### 硬停条件（不继续下一章）
 
 1. `verify-chapter.py` exit code 非 0 **且自动补救（见 §14.3.1）仍无法过** → 报作者具体哪些 ❌，不继续下一章

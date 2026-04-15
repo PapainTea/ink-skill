@@ -233,5 +233,5 @@
 | 输入 | LLM 生成正文 | 已有正文文件 |
 | PRE_WRITE_CHECK | 必须填写 | 留空 |
 | POST_SETTLEMENT | 必须填写 | 留空 |
-| Step 12 verify | 强制运行 | 建议运行（作者自选）|
+| Step 12 verify | 强制运行 | **强制运行**（回填历史章同样要贴 stdout 给作者，见 SKILL.md §7 强制律 9）|
 | 适用场景 | 正常写章 | 外部导入 / 补录历史章 |

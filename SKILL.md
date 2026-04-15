@@ -40,6 +40,26 @@ Read `<书根>/PROGRESS.md`。
 - **文件不存在，且存在 `chapters/index.json` + `story/current_state.md`** → 识别为老书，走"迁移老书"流程（详见 reference/init.md，阶段 6 完成）
 - **文件不存在，且上述文件也不存在** → 走"新建书"流程（详见 reference/init.md）
 
+### 步骤 c.5：pipeline 健康体检（已存在 chapters 时必跑）
+
+若书根下 `chapters/index.json` 已有章节（不是空白新书），**激活时立即对最近一章（index.json 最后一条）跑一次 verify**：
+
+```bash
+python3 <ink_writer 仓库>/scripts/verify-chapter.py <booksRoot> <书名> <N_latest>
+```
+
+- 全 ✅ → 正常，进入步骤 d
+- 出现 ❌ → **必须在开始任何写操作前警告作者**：
+
+  > ⚠️ 健康体检发现 ch {N_latest} 有 {K} 个环节未过：
+  > - {环节 1}：{具体 ❌ 描述}
+  > - {环节 2}：...
+  >
+  > 这意味着之前有 agent 没跑完整 pipeline。在修复前**禁止**继续写下一章，否则新章会基于错误的 truth files 状态，damage 会累积。
+  > 是否要我：a) 对 ch 1-{N_latest} 批量 verify，给出完整损伤地图；b) 直接修 ch {N_latest}；c) 你先看看再说？
+
+**理由**：另一个 agent（或老版本 skill）可能没执行 Step 10 快照 / Step 11 索引更新 / Step 12 verify，留下脏数据。新会话如果不做体检就直接往下写，等于在脏地基上盖楼。
+
 ### 步骤 d：按意图加载 truth files
 
 读 PROGRESS.md 的"📚 真相文件索引"段，按当前任务意图 Read 对应 truth file：
@@ -190,3 +210,9 @@ Read `<书根>/PROGRESS.md`。
 6. **先读后写**：任何写操作前必须 Read 对应 truth files，不凭记忆写作
 7. **PROGRESS.md 必更新**：每个 skill 动作完成后必须更新书根的 `PROGRESS.md`
 8. **先 Read reference 再执行**：非查询类意图必须先加载对应 reference 模块（见 §3 输出契约）
+9. **验证必贴律（写章 / 连写 / 重分析章节 的唯一完成证据）**：任何涉及"写 ch N"的 skill 动作（单章写、连写、rework、reanalyze-chapter 回填），**发给作者的最后一条消息必须以 `python3 scripts/verify-chapter.py ... ` 的完整 stdout 块开头**（原样保留 13 个 ✅/❌ 环节 + 最终汇总行）。以下一律视为**违反输出契约 = 章节未完成**：
+   - 只口头总结（"全部通过"/"流程跑完"/"已完成并审核"）而不贴 stdout
+   - 贴截取版（只贴汇总行、省略中间 13 条）
+   - 声称"verify 通过"但未实际调用脚本（自检：你调用 Bash 工具了吗？没有 → 未跑）
+   - 连写时用一句"ch 1-14 均已完成"代替每章的 verify stdout
+   **违反后果**：作者有权要求你把每章 verify 重跑一遍并贴输出；在补齐 stdout 之前，已写的章节**不算完成**，status 不得写 `approved`。自检触发点：你准备说"完成"/"写完"/"approved"/"进入下一章"之前 → 先检查上方 3 行内有没有 verify stdout，没有就停下来补。
