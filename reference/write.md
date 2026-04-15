@@ -6,6 +6,40 @@
 
 ---
 
+## 写章完整 pipeline（3 阶段架构）
+
+原 inkOS 写一章 = 3 个 prompt 阶段串联，各有独立 prompt 源：
+
+### Phase 1 — Writer（写正文）
+
+**本模块（reference/write.md）的主体内容**。按 25 条创作规则 + 本章 PRE_WRITE_CHECK + genre 配置（fatigueWords / chapterTypes / satisfactionTypes）生成章节正文。
+
+### Phase 2a — Observer（提取 facts）
+
+正文写完后，**切换 prompt**，让 LLM 作为"事实提取专家"从刚写的正文里提取 9 类 facts（角色行为 / 位置变化 / 资源变化 / 关系变化 / 情绪变化 / 信息流动 / 剧情线索 / 时间推进 / 身体状态）。
+
+**prompt 详情**：Read `reference/observer.md`。输出格式：`=== OBSERVATIONS ===` + 9 类清单。
+
+此阶段**只读正文 + 输出 observations**，不写任何文件。
+
+### Phase 2b — Reflector / Settler（把 observations 合进 truth files）
+
+拿到 observations 后，**再切换 prompt**，让 LLM 作为"结算专家"把 observations 按 9 分析维度合并到 7 个 truth files 的 delta。
+
+**prompt 详情**：Read `reference/snapshot.md`（含 settler 完整 prompt）。输出格式：`=== SECTION: current_state ===` / `=== SECTION: particle_ledger ===` 等段。
+
+此阶段**写 truth files + 追加 chapter_summaries**。
+
+### Phase 3 — 机械校验 + 持久化
+
+Phase 2b 完成后，跑本模块下方的 Step 6-12（字数校验 / 审计 / verify-chapter.py / index.json 更新 / 快照）。
+
+---
+
+**关键**：Phase 1/2a/2b 是**独立 3 轮 LLM 调用**，不是一轮搞定。每轮 prompt 不同（write / observer / settler），上下文也不同。这是 inkOS 的核心设计，不要合并。
+
+---
+
 # 写章流程（Pipeline）
 
 本章节定义"写下一章"的完整流程。用户说"写第 N 章"或"写下一章"时，严格按此流程执行。

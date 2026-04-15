@@ -6,6 +6,18 @@
 
 ---
 
+## 调用者
+
+本模块作为 **prompt 源** 被以下流程调用：
+
+1. **reference/write.md** 的 Phase 2a（写章后 fact 提取）
+2. **reference/reanalyze-chapter.md** 的 Step 2（外部章节回填 truth files 时先 extract facts）
+3. 作者显式说"帮我提取第 N 章 facts"时
+
+本模块**只是 prompt 文档**，无副作用（不写文件、不调脚本）。调用者读完本文件后按 prompt 和格式输出 observations 文本。
+
+---
+
 ## 使用场景
 
 - 审计前独立 fact 提取（配合 reference/audit.md）

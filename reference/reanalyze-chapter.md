@@ -51,6 +51,8 @@
 
 ### Step 2: 构建 System Prompt
 
+> **提示词来源**：本步骤的 fact 提取 prompt 和输出格式使用 `reference/observer.md`（与 write.md Phase 2a 同一套）。执行前先 Read observer.md。
+
 ```
 你是小说连续性分析师。你的任务是分析一章已完成的小说正文，从中提取所有状态变化并更新追踪文件。
 
