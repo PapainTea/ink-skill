@@ -30,6 +30,10 @@
 
 ## 流程（对应 inkOS chapter-analyzer.ts）
 
+### Step 0: 前置动作（必读）
+
+分析正文前**必须** Read `reference/writing-bans.md`（核心硬性禁令）——虽然 reanalyze 不产生新正文，但审计维度要核对已有正文是否违反禁令。Step 4.5 的回填审计也依赖这份规则。
+
 ### Step 1: 加载 Context
 
 从 `<书根>/story/` 读取全部 truth files（同写章 Step 2 的必读文件清单）：
@@ -49,9 +53,11 @@
 - 目标章节正文 `000N_<标题>.md`（完整正文）
 - `index.json`
 
-### Step 2: 构建 System Prompt
+### Step 2: 构建 System Prompt（单阶段，来自 inkOS chapter-analyzer.ts）
 
-> **提示词来源**：本步骤的 fact 提取 prompt 和输出格式使用 `reference/observer.md`（与 write.md Phase 2a 同一套）。执行前先 Read observer.md。
+**重要**：reanalyze 是**单次 LLM 调用**完成 fact 提取 + 7 个 truth files 增量更新，**不**套用写章 pipeline 的 Phase 2a/2b 两阶段（Observer → Reflector）。后者只在写章时用（writer.ts + observer-prompts.ts），chapter-analyzer 在 inkOS 原版里就是单阶段。
+
+下方 prompt 一字不差来自 inkOS `chapter-analyzer.ts` 的 `buildSystemPrompt()` zh 分支（英文书用 en 分支，见 inkOS 源码）：
 
 ```
 你是小说连续性分析师。你的任务是分析一章已完成的小说正文，从中提取所有状态变化并更新追踪文件。
@@ -75,8 +81,6 @@
 - 角色间关系变化、新的信息边界
 ```
 
-（若书语言为英文，以下替换为英文版——见 inkOS chapter-analyzer.ts buildSystemPrompt english branch）
-
 ### Step 3: 构建 User Prompt
 
 ```
@@ -90,7 +94,7 @@
 <current_state.md>
 
 ## 当前资源账本
-<particle_ledger.md>（数值型体裁有此项）
+<particle_ledger.md>（全书种必备）
 
 ## 当前伏笔池
 <pending_hooks.md>
@@ -180,19 +184,48 @@
 默认原样输出 `☆ 角色交互矩阵无变动 ☆`，仅当本章有角色变化时才输出完整 3 子表
 ```
 
-### Step 5: 持久化
+### Step 4.5: 审计回填章节 + Followup 继承（v0.1.10 起强制）
 
-分析结果按写章 Step 9（结算）的规则写入对应真相文件：
+reanalyze 虽然不走 PRE_WRITE_CHECK 和写章 Step 6-8 循环，但**必须产一份 audit md**（`story/audits/ch-N.md`），理由：
+- 章节从外部导入或回填，也需要可审计的质量记录
+- Followup 机制要求 audit 是继承链上的一环（见 `reference/audit.md` §7）
 
-- `current_state.md` → 全量覆盖
-- `particle_ledger.md` → 按 7 列 schema 增量合并（含事件ID）
-- `pending_hooks.md` → 按 hook_id 合并
-- `chapter_summaries.md` → 追加本章摘要行
-- `subplot_board.md` / `emotional_arcs.md` / `character_matrix.md` → sentinel 控制（非 sentinel 才写）
+**执行顺序**：
+1. Read `reference/audit.md` §7（Followup 段强制约束）
+2. 继承上章 followup：Read `story/audits/ch-(N-1).md` 的 `## Followup` 段（若 N=1 跳过），对每条 `[ ]` 判断本章是否消化 → `[x]` 或原样 `[ ]` 搬过来；同时 Read 上章 `current_state.md` 审计纠偏段，把 forward-looking warning/info 迁入
+3. 对新回填的 ch N 正文跑 37 维审计（用 Step 2 分析结果作为事实依据），产 `audits/ch-N.md`
+4. audit md 末尾必须有 `## Followup` 段（规则同 v0.1.10）
 
-### Step 6: 快照（可选）
+### Step 5: 持久化（完整 7 truth files）
 
-若作者确认分析结果可信，执行 snapshots/N/ 快照（见 reference/snapshot.md）。
+分析结果按写章 Step 9（结算）规则写入**全部 7 个** truth files：
+
+| 文件 | 更新策略 | sentinel 处理 |
+|------|---------|---------------|
+| `current_state.md` | 全量覆盖 | — |
+| `chapter_summaries.md` | 追加本章摘要行 | — |
+| `particle_ledger.md` | 按 7 列 schema 增量合并（含事件ID） | Step 4 输出 `☆ 无变动 ☆` 时不写 |
+| `pending_hooks.md` | 按 hook_id 合并 | — |
+| `subplot_board.md` | 按子线 ID 合并 | Step 4 输出 `☆ 支线进度板无变动 ☆` 时不写 |
+| `emotional_arcs.md` | 追加本章情感行 | Step 4 输出 `☆ 情感弧线无变动 ☆` 时不写 |
+| `character_matrix.md` | 3 子表按合并 key 更新 | Step 4 输出 `☆ 角色交互矩阵无变动 ☆` 时不写 |
+
+Step 5 完成后，**必须**重算 `PROGRESS.md` 的 `📌 活跃 followup` 段（聚合所有 audits 的 `[ ]` 条目，规则同 audit.md §7.3）。
+
+### Step 6: 快照（强制）
+
+**v0.1.10 起强制**：reanalyze 完成后必须产 `story/snapshots/N/`，与写章 Step 10 规则一致：
+
+```bash
+BOOK_DIR=<父目录>/books/<书名>
+SNAP_DIR=$BOOK_DIR/story/snapshots/<N>
+mkdir -p $SNAP_DIR
+cp $BOOK_DIR/story/{current_state,particle_ledger,pending_hooks,chapter_summaries,subplot_board,emotional_arcs,character_matrix}.md $SNAP_DIR/
+mkdir -p $SNAP_DIR/audits
+cp $BOOK_DIR/story/audits/ch-N.md $SNAP_DIR/audits/
+```
+
+理由：Step 12 verify 会检查 `snapshots/N/` 存在，跳过快照 = verify 必 ❌。回填历史章如果不快照，未来 rework 那一章时无基线可恢复。
 
 ### Step 7: 更新 index.json
 
@@ -233,5 +266,21 @@
 | 输入 | LLM 生成正文 | 已有正文文件 |
 | PRE_WRITE_CHECK | 必须填写 | 留空 |
 | POST_SETTLEMENT | 必须填写 | 留空 |
+| Observer/Reflector 两阶段 | ✅（writer.ts + observer-prompts.ts） | ❌ 单阶段（chapter-analyzer.ts 一次 LLM 调用） |
+| Step 7 审计 | 37 维 + Followup 继承 | **同上**（v0.1.10 起强制，见 Step 4.5）|
+| Step 10 快照 | 强制 | **强制**（v0.1.10 起，见 Step 6）|
 | Step 12 verify | 强制运行 | **强制运行**（回填历史章同样要贴 stdout 给作者，见 SKILL.md §7 强制律 9）|
 | 适用场景 | 正常写章 | 外部导入 / 补录历史章 |
+
+## 级联重算策略（v0.1.10 明确：默认不做）
+
+场景：书已写到 ch 17，作者说"重分析 ch 10"。
+
+**默认行为**：reanalyze 只动 ch 10 一章（truth files delta + audits/ch-10.md + snapshots/10/），**不**重算 ch 11-17 的 audit。ch 11+ 的 truth files 状态可能因此与 ch 10 新结果有轻微漂移，但绝大多数场景下作者回填 ch 10 是小修（错别字、微调描写），truth files 不会大变。
+
+**作者需要级联时**：手动逐章触发 `重分析 ch 11` → `重分析 ch 12` → ... 到最新章。skill 不提供批量级联命令，理由：
+- 级联成本高（N 次 LLM 调用 + N 份 audit md 重写）
+- 作者在 ch 11+ 的 audit 里可能手动改过 followup 标注（`[x]` 消化记录、来源链注释），级联会全部覆盖
+- 真正需要从 ch 10 起全盘翻新，应该走 rework 流程（重写 ch 10 + 其后章节）而不是 reanalyze
+
+如果你在 ch 11+ 发现 truth files 与 ch 10 新结果明显冲突（如主角状态接不上），单独触发那一章的 reanalyze 即可精修。

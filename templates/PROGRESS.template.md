@@ -25,7 +25,7 @@
 |------|------|------------|
 | 角色交互矩阵 | `story/character_matrix.md` | 写章前、审计"人物一致性"维度；3 子表：角色档案/相遇记录/信息边界 |
 | 世界观设定 | `story/story_bible.md` | 写涉及设定的章节前 |
-| 资源账本 | `story/particle_ledger.md` | 写有物品/资源变动的场景前、审计"资源一致性"（仅数值型体裁启用）|
+| 资源账本 | `story/particle_ledger.md` | 写有物品/资源变动的场景前、审计"资源一致性"（全书种必备，记录金币/武器/兵力/人情债/合作链等任何要追踪的资源）|
 | 章节摘要 | `story/chapter_summaries.md` | 写章前检查前情 |
 | 当前状态卡 | `story/current_state.md` | 每次激活 |
 | 伏笔池 | `story/pending_hooks.md` | 写章前检查待回收伏笔 |

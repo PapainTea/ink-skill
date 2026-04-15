@@ -13,6 +13,10 @@
 
 （若本书在 `book_rules.md` 中配置了主角锁定，system prompt 会追加：`主角人设锁定：<主角名>，<性格锁定列表>。修改不得违反人设。`）
 
+## 前置动作（必读）
+
+修订任何正文前**必须** Read `reference/writing-bans.md`（核心硬性禁令：破折号 / 不是而是 / markdown 结构泄漏 / 分析术语 / 集体反应 / 疲劳词密度）。**修订劣化最常见场景就是引入新的禁令违规**（修一个问题引入两个新问题），事先把禁令加载进 context 能显著降低这类失败。
+
 ## 5 种修订模式
 
 ### polish 润色
@@ -45,14 +49,19 @@
 
 > 重写：可重构场景推进和冲突组织，但不改主设定和大事件结果
 
-**⚠️ 特殊执行路径**：rework 不走修订 LLM 的 partial-patch 流程，而是：
-1. 预校验 `snapshots/(N-1)/` 完整性（含 `current_state.md` + `pending_hooks.md`）
-2. `restoreState(N-1)` 恢复所有真相文件到上一章完成态
-3. 删除 `chapters/000N_*.md` 及所有 > N 的章节
-4. 从 `chapters/index.json` 删除 ch ≥ N 条目
-5. 清理 `pipeline-cache/N/` 避免 stale cache
-6. `refreshMemoryFromRestoredState(N-1)` 重建 memory.db
-7. 调 `_writeNextChapterLocked` 走**完整写章 pipeline**（planner → composer → writer → settler → auditor → …）
+**⚠️ 特殊执行路径**：rework 不是打补丁，是**完全重生成整章**。skill 里按以下 5 步执行（对应 inkOS `runner.ts::reworkChapterFromPreviousSnapshot`）：
+
+1. **校验前章快照**：`snapshots/(N-1)/` 必须含完整 7 个 truth files + `audits/ch-(N-1).md`，缺任一文件 → 硬停问作者（不完整无法恢复基线）。若作者要 rework 的是 ch 1，用 `snapshots/0/`（新建书时产的初始快照）
+2. **恢复前章末状态**：`cp snapshots/(N-1)/*.md story/` 把 7 个 truth files 覆盖回 ch N-1 结束时的状态。注意 `audits/` 子目录不 copy，保留当前 `story/audits/` 不动
+3. **删除 N 起所有章节**：rm `chapters/000N_*.md` 及所有 `chapters/000M_*.md`（M > N），同时 rm `story/audits/ch-N.md` 及更高章的 audit、rm `story/snapshots/N/` 及更高章的 snapshot
+4. **更新 index.json**：删除 number ≥ N 的所有条目
+5. **走完整写章 pipeline**：Read `reference/write.md`，从 Step 1 开始走 14 步（含 Step 8.5 Titler / Step 9 Settler / Step 10 Snapshot / Step 12 verify 全部），产全新 ch N。若作者希望继续重写 ch N+1 后续章节，手动逐章触发"写第 N+1 章"
+
+**对作者的警告**（rework 触发时必须先告知）：
+
+> ⚠️ rework ch N 会**丢弃** ch N+1 到最新章的全部内容（它们基于旧 ch N 状态接力写，与新 ch N 语义不一致）。被丢弃的章节数 = M - N + 1（M = 最新章）。你确认吗？ [y/n]
+
+得到 `y` 才执行 Step 3 删除。
 
 因此 rework 会更新全部 7 个真相文件，而非 partial-patch 模式的 3 个。
 
@@ -102,7 +111,7 @@
 5. 不改变剧情走向和核心冲突
 6. 保持原文的语言风格和节奏
 7. 修改后同步更新状态卡、账本、伏笔池
-8. 保持章节字数在目标区间内（依据 `book_rules.yaml.length` 配置，详见 §03）；只有在修复关键问题确实需要时才允许轻微偏离
+8. 保持章节字数在目标区间内（依据 `book_rules.md` frontmatter 的 `length` 配置，详见 reference/truth-schema.md）；只有在修复关键问题确实需要时才允许轻微偏离
 
 ### 严重度过滤（audit-driven spot-fix 专用）
 
@@ -217,17 +226,57 @@ reviser LLM 的 user prompt 中会拼入以下上下文：
 - `style_guide.md`（或 `book_rules.md` body fallback）
 - `parent_canon.md`（番外专用）
 - `fanfic_canon.md`（同人专用，额外约束"角色对话必须保留原作语癖"）
-- 若 `book_rules.yaml.length` 已配置 —— 字数护栏段：`target / softMin-softMax / hardMin-hardMax`（详见 §03）
+- 若 `book_rules.md` frontmatter 的 `length` 已配置 —— 字数护栏段：`target / softMin-softMax / hardMin-hardMax`
 
-## 质量 Gate
+## 质量 Gate（v0.1.10+：修订后必须重跑 audit，且把对比贴给作者）
 
-Reviser 修订结果只有在**不让劣化指标变坏**的前提下才被接受：
+> inkOS 原版有代码层自动 gate（`runner.ts::reviseDraft` 持久化段比对修订前后的 blocking issues 和 AI-tell 计数，劣化就回滚）。**skill 没有代码执行能力，做不到自动 gate**，所以这个机制降级为**LLM 自律 + 强制输出证据**——同级别严格度于 SKILL.md §7 强制律 9 验证必贴律。
 
-- blocking 级审稿问题数**不得增加**
-- AI-tell（AI 痕迹标记词）计数**不得上升**
-- 若劣化 → runner 层回滚到修订前的版本，并可触发重试或升级模式（spot-fix → rewrite → rework）
+### 强制律（与 SKILL.md §7 规则 9 同级）
 
-此 gate 由 `runner.ts` 的 reviseDraft 持久化段实施，不是 reviser 本身的约束。
+任何 revise 动作（polish / rewrite / spot-fix / anti-detect，rework 走独立 pipeline 不适用）**完成后、递交之前**：
+
+1. **必须** Read `reference/audit.md`，对修订后的正文跑完整 37 维 audit 流程
+2. **必须**把以下对比**原样**贴给作者，放在发给作者的消息里（不是 debug log）：
+
+```
+## 修订前 audit
+- critical: X 条
+- warning: Y 条
+- info: Z 条
+- followup: W 条
+
+## 修订后 audit（重跑完整 37 维）
+- critical: X' 条
+- warning: Y' 条
+- info: Z' 条
+- followup: W' 条
+```
+
+3. **判定规则**（LLM 自检）：
+
+| 情况 | 判定 | 动作 |
+|------|------|------|
+| X' = 0 且 Y' ≤ Y | ✅ 修订成功 | 递交，更新 index.json status |
+| X' > 0 或 Y' > Y | ❌ **修订劣化** | **回滚**（丢弃本次修订输出，正文恢复修订前版本），向作者报告具体哪条 issue 恶化了，询问："a) 换模式重试（spot-fix → rewrite → rework）；b) 忽略这次修订；c) 你人工介入" |
+| X' = X 且 Y' = Y 但 issue 内容变了 | ⚠️ 中性 | 贴对比给作者决定是否采用 |
+
+### 视为违规（= 修订未完成）的 4 种情形
+
+同 SKILL.md §7 规则 9 的"验证必贴律"同构：
+
+- 只口头总结（"修好了"/"issues 清零"）而不贴对比
+- 只跑机械 grep（破折号 / 不是而是），不跑完整 37 维 audit
+- 声称"audit 通过"但未实际 Read audit.md 走流程——自检：*我 Read audit.md 了吗？没有 → 未跑*
+- 贴截取版（只贴汇总 X/Y/Z 而不对比前后）
+
+### 自检触发点
+
+准备说"修订完成"/"修好了"/"已处理 issues"/"更新 status approved"**之前** → 检查消息里上方 3 行内有无"修订前/后 audit 对比块"，没有就停下来补跑 audit + 贴对比。
+
+### 为什么这么严
+
+spot-fix 的最常见失败模式是"**修一个问题引入两个新问题**"（LLM 在替换句子时用到禁词、或拉长句子导致疲劳词密度上升）。没有强制重审 gate，劣化修订会静默进入 status approved，污染后续章节的 audit 基线（因为下一章的 audit 会以为 ch N 是干净的，实际上坏在那里没人发现）。此 gate 把"改完就完"的懒惰路径堵死。
 
 ## 持久化写入矩阵
 
@@ -309,12 +358,15 @@ if mode != "none":
     调用 length-normalizer，一次修正
 ```
 
-### 与 revise.md compress/expand 模式的区别
+### compress/expand 不是 revise mode（澄清）
 
-| 维度 | length-normalizer（本附录）| compress/expand 修订模式 |
-|------|--------------------------|------------------------|
-| 触发方 | 写章 pipeline 自动调用 | 作者手动触发 |
-| 目的 | 机械性达标 | 风格性优化 |
-| 修正次数 | 严格一次 | 可多轮 |
-| 输出格式 | 纯正文（无 PATCHES / FIXED_ISSUES）| 标准修订格式（FIXED_ISSUES + PATCHES 等）|
+旧版文档曾暗示 revise.md 有 "compress/expand 修订模式"。**这是错的**。inkOS 源码 `reviser.ts:37` 明确定义：
+
+```typescript
+export type ReviseMode = "polish" | "rewrite" | "rework" | "anti-detect" | "spot-fix";
+```
+
+5 种 mode，**没有 compress/expand**。
+
+**compress/expand 是 length-normalizer 的内部模式**（见上方 §触发逻辑），不是 revise mode。作者**不能**用"压缩 ch N" / "扩写 ch N"这类触发词手动调 revise——字数偏离由写章 Step 6 自动调 length-normalizer 处理，一次修正不递归。如果作者想手动对章节做风格上的"缩写/扩展"，走 `rewrite`（段落级改写）或 `polish`（只改表达）。
 | truth files 更新 | 不更新（字数规范化不改事实）| 更新受影响的 truth files |
