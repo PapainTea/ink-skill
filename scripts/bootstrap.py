@@ -16,7 +16,7 @@ from pathlib import Path
 
 PLATFORM_SKILL_PATHS = {
     "claude-code": Path.home() / ".claude" / "skills" / "ink",
-    "codex": Path.home() / ".agents" / "skills" / "ink",
+    "codex": Path.home() / ".codex" / "skills" / "ink",
     "gemini": Path.home() / ".gemini" / "extensions" / "skills" / "ink",
     "cursor": None,  # Cursor 无标准 skills 路径
 }

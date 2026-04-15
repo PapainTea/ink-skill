@@ -18,58 +18,67 @@ description: |
 
 ---
 
-## §2 激活自检（按顺序执行，不可跳过）
+## §2 激活自检（线性流程，不可乱序、不可跳步）
 
-### 步骤 a：确认当前工作目录
+```
+ a. 定位书根 ──┬─ 不是书根 ─▶ b. 强制询问作者 ──▶ 回到 a
+              └─ 是书根 ──▶ c. 识别书况 ──┬─ PROGRESS.md 存在 ──▶ c.5 健康体检 ──▶ d. 按意图加载
+                                          ├─ 仅 index.json+current_state.md ──▶ 走「迁移老书」(reference/init.md)
+                                          └─ 俱无 ──▶ 走「新建书」(reference/init.md)
+```
 
-检查 cwd 是否为某本书的书根。判断标准：**目录下同时存在 `chapters/` 和 `story/`**。
+### 步骤 a — 定位书根
 
-### 步骤 b：书根不明确时，强制询问
+检查 cwd 是否为某本书的书根。**判据：目录下同时存在 `chapters/` 和 `story/`**。
 
-若 cwd 不是书根（如在 `books/` 父目录或其他位置），**必须先问作者**：
+### 步骤 b — 书根不明确时强制询问
+
+若 cwd 不在书根（如在 `books/` 父目录或其他位置）：
 
 > "你要在哪本书上操作？请给我书根目录的路径。"
 
-等作者明确回答后再继续。**在此之前禁止执行任何写操作**，包括禁止创建 init 文件。
+**在作者明确回答前，禁止任何写操作，包括创建 init 文件**。得到路径后回到步骤 a 重新判定。
 
-### 步骤 c：读 PROGRESS.md
+### 步骤 c — 识别书况（读 PROGRESS.md）
 
-Read `<书根>/PROGRESS.md`。
+Read `<书根>/PROGRESS.md`，按以下三分支路由：
 
-- **文件存在** → 读取，继续步骤 d
-- **文件不存在，且存在 `chapters/index.json` + `story/current_state.md`** → 识别为老书，走"迁移老书"流程（详见 reference/init.md，阶段 6 完成）
-- **文件不存在，且上述文件也不存在** → 走"新建书"流程（详见 reference/init.md）
+| PROGRESS.md | 其他标志 | 分支 |
+|-------------|---------|------|
+| 存在 | — | 继续步骤 c.5 |
+| 不存在 | 有 `chapters/index.json` + `story/current_state.md` | 老书迁移（Read `reference/init.md` 迁移段）|
+| 不存在 | 俱无 | 新建书（Read `reference/init.md` 新建段）|
 
-### 步骤 c.5：pipeline 健康体检（已存在 chapters 时必跑）
+### 步骤 c.5 — pipeline 健康体检（仅当 chapters/index.json 非空时必跑）
 
-若书根下 `chapters/index.json` 已有章节（不是空白新书），**激活时立即对最近一章（index.json 最后一条）跑一次 verify**：
+对最近一章（index.json 最后一条）跑 verify：
 
 ```bash
-python3 <ink_writer 仓库>/scripts/verify-chapter.py <booksRoot> <书名> <N_latest>
+python3 <SKILL_DIR>/scripts/verify-chapter.py <booksRoot> <书名> <N_latest>
 ```
 
-- 全 ✅ → 正常，进入步骤 d
-- 出现 ❌ → **必须在开始任何写操作前警告作者**：
+（`<SKILL_DIR>` 的解析规则见 §8。）
+
+- **全 ✅** → 进入步骤 d
+- **任一 ❌** → 立即向作者发如下警告，**在得到明确指令前禁止写下一章**：
 
   > ⚠️ 健康体检发现 ch {N_latest} 有 {K} 个环节未过：
   > - {环节 1}：{具体 ❌ 描述}
   > - {环节 2}：...
   >
-  > 这意味着之前有 agent 没跑完整 pipeline。在修复前**禁止**继续写下一章，否则新章会基于错误的 truth files 状态，damage 会累积。
-  > 是否要我：a) 对 ch 1-{N_latest} 批量 verify，给出完整损伤地图；b) 直接修 ch {N_latest}；c) 你先看看再说？
+  > 之前有 agent 可能没跑完整 pipeline（漏 Step 10 快照 / Step 11 索引 / Step 12 verify），留下脏数据。在脏地基上继续写，damage 会累积。
+  > 三选一：a) 对 ch 1-{N_latest} 批量 verify 给全量损伤地图；b) 直接修 ch {N_latest}；c) 你先看看再说。
 
-**理由**：另一个 agent（或老版本 skill）可能没执行 Step 10 快照 / Step 11 索引更新 / Step 12 verify，留下脏数据。新会话如果不做体检就直接往下写，等于在脏地基上盖楼。
+### 步骤 d — 按意图加载 truth files
 
-### 步骤 d：按意图加载 truth files
+读 PROGRESS.md 的"📚 真相文件索引"段，按任务意图选读：
 
-读 PROGRESS.md 的"📚 真相文件索引"段，按当前任务意图 Read 对应 truth file：
-
-| 意图 | 优先读 |
-|------|--------|
+| 意图 | 优先 Read |
+|------|-----------|
 | 写章 / 续写 | `current_state.md` + `chapter_summaries.md` |
 | 审计 | `character_matrix.md` + `pending_hooks.md` |
 | 修订 | 对应章节正文 + `story/audits/ch-N.md` |
-| 查询类 | 按问题内容按需读对应 truth file |
+| 查询类 | 按问题内容按需读 |
 
 ---
 
@@ -210,9 +219,39 @@ python3 <ink_writer 仓库>/scripts/verify-chapter.py <booksRoot> <书名> <N_la
 6. **先读后写**：任何写操作前必须 Read 对应 truth files，不凭记忆写作
 7. **PROGRESS.md 必更新**：每个 skill 动作完成后必须更新书根的 `PROGRESS.md`
 8. **先 Read reference 再执行**：非查询类意图必须先加载对应 reference 模块（见 §3 输出契约）
-9. **验证必贴律（写章 / 连写 / 重分析章节 的唯一完成证据）**：任何涉及"写 ch N"的 skill 动作（单章写、连写、rework、reanalyze-chapter 回填），**发给作者的最后一条消息必须以 `python3 scripts/verify-chapter.py ... ` 的完整 stdout 块开头**（原样保留 13 个 ✅/❌ 环节 + 最终汇总行）。以下一律视为**违反输出契约 = 章节未完成**：
+9. **验证必贴律（写章 / 连写 / 重分析章节 的唯一完成证据）**
+
+   **规则**：任何"写 ch N"类动作（单章写、连写、rework、reanalyze-chapter 回填），**发给作者的最后一条消息必须以 `python3 scripts/verify-chapter.py ... ` 的完整 stdout 块开头**——原样保留 13 个 ✅/❌ 环节 + 最终汇总行。
+
+   **视为违规（= 章节未完成）的 4 种情形**：
    - 只口头总结（"全部通过"/"流程跑完"/"已完成并审核"）而不贴 stdout
    - 贴截取版（只贴汇总行、省略中间 13 条）
-   - 声称"verify 通过"但未实际调用脚本（自检：你调用 Bash 工具了吗？没有 → 未跑）
-   - 连写时用一句"ch 1-14 均已完成"代替每章的 verify stdout
-   **违反后果**：作者有权要求你把每章 verify 重跑一遍并贴输出；在补齐 stdout 之前，已写的章节**不算完成**，status 不得写 `approved`。自检触发点：你准备说"完成"/"写完"/"approved"/"进入下一章"之前 → 先检查上方 3 行内有没有 verify stdout，没有就停下来补。
+   - 声称"verify 通过"但未实际调用脚本 —— 自检：*你调用 Bash 工具了吗？没有 → 未跑*
+   - 连写时用一句"ch 1-14 均已完成"代替每章各自的 verify stdout
+
+   **违反后果**：作者有权要求你把每章 verify 重跑并贴输出；在补齐 stdout 之前，已写章节**不算完成**，`index.json.status` 不得写 `approved`。
+
+   **自检触发点**：准备说"完成"/"写完"/"approved"/"进入下一章"之前 → 检查上方 3 行内有无 verify stdout，没有就停下来补。
+
+---
+
+## §8 资源路径解析（reference 模块 + scripts 定位）
+
+本 skill 引用的所有 `reference/*.md` 和 `scripts/*.py` 都在 **skill 自身目录**下。激活时按以下顺序解析绝对路径，取第一个存在的：
+
+1. `$CLAUDE_SKILL_DIR` / `$INK_SKILL_DIR`（若 harness 或用户手动暴露；多数环境没有，跳过到 2）
+2. `~/.claude/skills/ink/`（Claude Code 默认安装位置，通常是指向开发目录的 symlink）
+3. `~/.codex/skills/ink/`（Codex CLI 默认）/ `~/.gemini/extensions/skills/ink/`（Gemini CLI 默认）
+4. 向上查找：从当前 cwd 向上逐级找含 `ink-skill-dev/SKILL.md` 或 `SKILL.md` 且 name=ink 的目录
+
+解析完成后，`verify-chapter.py` 的调用形如：
+
+```bash
+python3 <SKILL_DIR>/scripts/verify-chapter.py <booksRoot> <书名> <N>
+```
+
+Read reference 模块同理：`Read <SKILL_DIR>/reference/write.md`。
+
+**降级**：4 个位置都找不到 → 停下来问作者 `ink-skill` 仓库的本地路径，**不要**猜测或使用相对路径（相对路径在 cwd=书根时会错，书根下没有 scripts/）。
+
+**自检**：准备调用 verify-chapter.py 前 → 先确认 SKILL_DIR 已解析；路径里含 `<...>` 占位符说明没解析成功，停下问。
