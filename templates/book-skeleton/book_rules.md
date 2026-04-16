@@ -2,14 +2,10 @@
 # 机器可读的硬约束配置（YAML frontmatter）
 
 length:
-  target: 4500           # 单章目标字数
-  softMinPct: 0.90       # softMin = target × 0.90
-  softMaxPct: 1.15       # softMax = target × 1.15
-  hardMinPct: 0.80       # hardMin = target × 0.80
-  hardMaxPct: 1.30       # hardMax = target × 1.30
+  target: 4500           # 单章目标字数；hardGate = target 本身（v0.1.14 硬门槛，无折扣、无 allow-short 旁路）
+  plotThresholdPct: 12   # plotThreshold = target × (1 - 12%) = 3960（首稿剧情完成度阈值）
+  hardMaxPct: 30         # hardMax = target × (1 + 30%) = 5850
   countingMode: chinese  # chinese / english
-  enforceSoftMin: true
-  enforceHardMin: true
 
 hardRules:
   noMarkdownInProse: true       # 禁止正文出现 markdown 结构化标记（---, ##, **, ``` 等）
@@ -21,7 +17,7 @@ hardRules:
 pipeline:
   autoRunAudit: true            # Step 7 审计默认必跑
   autoRunVerify: true           # Step 12 三层验证默认必跑
-  autoExpandIfShort: true       # 字数在 softMin-hardMin 间默认扩写一次
+  autoExpandIfShort: true       # 字数 < hardGate 时默认扩写一次（走 Step 6.3 / 6.3b 循环）
 
 genre:
   id: {{genre_id}}              # 从 skill 的 genres/ 选一个，如 xuanhuan / urban / other

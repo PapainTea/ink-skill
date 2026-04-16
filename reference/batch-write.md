@@ -128,7 +128,7 @@ reviser 按 `reference/revise.md` 的 spot-fix 模式执行：只动问题句 + 
 
 1. Settler（更新 7 个 truth files）
 2. Snapshot（保存到 `snapshots/N/`）
-3. **流程审核**：用 Bash 工具调用 `python3 <SKILL_DIR>/scripts/verify-chapter.py <booksRoot> <书名> <N>`（`<SKILL_DIR>` 解析规则见 SKILL.md §8；若 PRE_WRITE_CHECK 声明"允许偏短"追加 `--allow-short`）
+3. **流程审核**：用 Bash 工具调用 `python3 <SKILL_DIR>/scripts/verify-chapter.py <booksRoot> <书名> <N>`（`<SKILL_DIR>` 解析规则见 SKILL.md §8）
 4. **把 verify-chapter.py 的 stdout 完整贴给作者**（14 个 ✅/❌ 环节 + 最终汇总行，v0.1.10 起含 Followup 段检查）
 
 **理由**：truth files 是下一章 context 的基础，结算不及时会让下一章 planner 读到错误的状态卡。流程审核是**最后的兜底**，你（LLM）自己可能漏 Step 10/11，verify 脚本会把漏掉的环节用 ❌ 显式抓出来，作者一眼就能看到。

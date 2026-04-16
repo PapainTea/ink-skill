@@ -659,7 +659,7 @@ cp $BOOK_DIR/story/character_matrix.md $SNAP_DIR/
 1. 写入 `chapters/000<N>_<title>.md`（编号补零到 4 位）
 2. 更新 `chapters/index.json`：
    - 新增一项（或替换 rework 场景下的已有项）
-   - 字段：number, title, filename, status="approved", wordCount, createdAt, auditIssues
+   - 字段：number, title, status="approved", wordCount, createdAt, updatedAt, lengthWarnings（具体 schema 见下方"写入 index.json 的字段"；**不含** auditIssues / lengthTelemetry）
 
 ### 文件名示例
 
@@ -728,18 +728,14 @@ python3 <ink_writer_root>/scripts/verify-chapter.py \
     <书名> <N>
 ```
 
-如果 PRE_WRITE_CHECK 声明了"本章允许偏短"，加 `--allow-short` 参数：
-
-```bash
-python3 .../verify-chapter.py <books-root> <书名> <N> --allow-short
-```
+v0.1.14 起**取消** `--allow-short` 旁路：`hardGate = target`，无软门槛、无百分比折扣、无"允许偏短"声明可绕过。如本章需偏短，请在 PRE_WRITE_CHECK 声明"章节 target 临时覆盖"降低本章 `target`（见 §Step 4 章节 target 临时覆盖），而不是加任何 flag。
 
 ### 三层检查内容（详见 `scripts/verify-chapter.py` 文件头注释）
 
 | Layer | 检查内容 | 失败即 |
 |-------|---------|--------|
 | **1 强制不变量** | 正文存在 + index 条目 + snapshots/N/ 含 7 truth files + current_state 章节号对 + chapter_summaries 有 ch N 行 + audits/ch-N.md 存在 | exit 1 |
-| **2 机械规则** | 破折号=0 / 不是而是=0 / 分析术语=0 / md 结构泄漏=0 / 字数≥hardMin（softMin 受 `--allow-short` 控制）| exit 2 |
+| **2 机械规则** | 破折号=0 / 不是而是=0 / 分析术语=0 / md 结构泄漏=0 / 字数 ≥ hardGate（= target 本身，无软门槛、无旁路）| exit 2 |
 | **3 条件性副作用** | 审计 md 里声明"推进 X truth file"时，对应文件必须有 ch N 行/变化 | exit 3 |
 
 ### 失败处理（首次 ❌ 不直接硬停，先进入自动补救循环）
@@ -760,7 +756,7 @@ python3 .../verify-chapter.py <books-root> <书名> <N> --allow-short
 | **Step 11 索引**：`index.json` 无 ch N 条目 | 追加条目：`{number: N, title: 从文件名抽, status: approved/audited（按审计结果）, wordCount: 现场测量, createdAt/updatedAt: 当前 ISO 时间, lengthWarnings: []}` |
 | **Step 7 审计**：`audits/ch-N.md` 缺失 | Read `.claude-modules/audit.md` 后重跑审计流程，输出 ch-N.md |
 | **Step 6 机械禁令**：破折号 / 不是而是 / 分析术语 / markdown 泄漏出现 | Read `.claude-modules/revise.md` 走 spot-fix 清理，重跑 verify |
-| **Step 6 字数**：`softMin > 字数 ≥ hardMin`（偏短但未触底）| 走 §04 Step 6.3 的一次扩写循环 |
+| **Step 6 字数**：`plotThreshold > 字数` 或 Beat Sheet 事件未全命中 | 走 §04 Step 6.3b 推剧情续写循环；单纯字数 < `hardGate (= target)` 且事件齐备走 §04 Step 6.3 的扩写循环 |
 | **Step 9 chapter_summaries 缺 ch N 行** | 基于正文生成 ch N 摘要行追加（8 列：章节/标题/出场/关键事件/状态变化/伏笔动态/情绪/类型）|
 | **Step 9 current_state 当前章节 < N** | 整体覆盖 current_state.md 使"当前章节" = N，其他 7 字段按本章最新状态重写 |
 | **Step 7 Followup**（v0.1.10）：`PROGRESS.md 活跃 followup 段与 audits 聚合不一致` | 重跑 verify 时加 `--fix-progress` 参数，脚本会自动重写 PROGRESS.md 的 `📌 活跃 followup` 段（只改这一段，其他段不动）。适用于：audit md 的 `## Followup` 段是对的，只是漏写了 Step 9 Settler 末的聚合动作 |
@@ -771,7 +767,7 @@ python3 .../verify-chapter.py <books-root> <书名> <N> --allow-short
 |---------|--------------|
 | **Step 5 正文文件本身缺失或空** | 写章步骤就出错，不能凭空生文 |
 | **Step 6 字数 `> hardMax`** | 压缩涉及删哪段的内容判断，需要作者参与 |
-| **Step 6 字数 `< hardMin`（硬下限）** | 扩写 2 轮仍不过说明故事容量不够，需要作者给新情节/细节方向 |
+| **Step 6 字数 `< hardGate (= target)` 且 2 轮补救仍不过** | 扩写/推剧情 2 轮仍不过说明故事容量不够，需要作者给新情节/细节方向 |
 | **Step 9 truth file 审计声明涉及但找不到 ch N 相关行** | 结算遗漏事实性改动，需要 LLM 回到 Context 重结算（基于语义判断），盲修易错 |
 
 对这类硬停 ❌，向作者直接报：
