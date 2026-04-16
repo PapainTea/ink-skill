@@ -237,6 +237,28 @@ python3 <SKILL_DIR>/scripts/verify-chapter.py <booksRoot> <书名> <N_latest>
 
    **自检触发点**：准备说"完成"/"写完"/"approved"/"进入下一章"之前 → 检查上方 3 行内有无 verify stdout，没有就停下来补。
 
+10. **首稿字数必贴律（Writer 交稿的唯一完成证据，v0.1.14）**
+
+    **规则**：任何写正文动作（Step 5 Writer 输出 `CHAPTER_CONTENT` 后），**同一条消息末尾必须原样贴**：
+
+    ```
+    FIRST_DRAFT_WORD_COUNT: <数字>
+    TARGET: <本章 target>
+    PLOT_THRESHOLD: <target × 0.88>
+    HARD_GATE: <target>
+    BEAT_SHEET_COVERAGE: <命中场景数>/<总场景数>
+    分流判定: <"推剧情续写" | "扩写补细节" | "字数达标">
+    ```
+
+    **视为违规的情形**：
+    - 只贴正文不贴字数块 → Step 6 当作 Writer 未交稿，要求重写
+    - 贴了字数但"分流判定"与数值不符（例：首稿 2800，target 4500，却标"扩写补细节"）→ 字数捏造 / 判定欺骗
+    - 先不贴、等 Step 6 质询才补 → 等于在 Step 6 手里而非 Writer 交稿时暴露，**绕过首稿 gate**
+
+    **违反后果**：Writer 本轮交稿作废，Step 6 必须要求重写整章；已触发的扩写/续写循环结果不予采信（扩写只能建立在"首稿透明"基础上）。
+
+    **自检触发点**：准备输出 `### CHAPTER_CONTENT` 正文结束前 → 检查字数块 5 行是否都会在同一条消息内出现，没有就补上再发。
+
 ---
 
 ## §8 资源路径解析（reference 模块 + scripts 定位）

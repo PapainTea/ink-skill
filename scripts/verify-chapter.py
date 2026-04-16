@@ -17,7 +17,7 @@ Layer 2 机械规则（必须通过）：
   - 正文"不是...而是..." == 0
   - 分析术语 == 0
   - markdown 结构泄漏（---/###/**/列表）== 0
-  - 字数 ≥ hardMin（除非作者声明允许偏短，但仍要 ≥ hardMin）
+  - 字数 ≥ hardGate（= target 本身，无软门槛、无 allow-short 旁路；如需偏短请降本章 target）
 
 Layer 3 条件性副作用（按结算摘要/sentinel 判断）：
   - 对于每个 truth file（subplot_board / emotional_arcs / character_matrix /
@@ -107,13 +107,9 @@ def get_length_config(book_dir: Path) -> dict:
     book_rules = book_dir / "story/book_rules.md"
     defaults = {
         "target": 4500,
-        "softMinPct": 10,
-        "softMaxPct": 10,
-        "hardMinPct": 20,
-        "hardMaxPct": 20,
+        "plotThresholdPct": 12,  # 首稿 < target × (1 - 12%) = 88% 判情节容量不足
+        "hardMaxPct": 20,        # 超长压缩门槛
         "countingMode": "zh_chars",
-        "enforceSoftMin": True,
-        "enforceHardMin": True,
     }
     if not book_rules.exists():
         return defaults
@@ -127,10 +123,9 @@ def compute_length_thresholds(cfg: dict) -> dict:
     t = cfg["target"]
     return {
         "target": t,
-        "softMin": int(t * (1 - cfg["softMinPct"] / 100)),
-        "softMax": int(t * (1 + cfg["softMaxPct"] / 100)),
-        "hardMin": int(t * (1 - cfg["hardMinPct"] / 100)),
-        "hardMax": int(t * (1 + cfg["hardMaxPct"] / 100)),
+        "hardGate": t,  # 最终硬门槛 = target 本身，无折扣
+        "plotThreshold": int(t * (1 - cfg.get("plotThresholdPct", 12) / 100)),
+        "hardMax": int(t * (1 + cfg.get("hardMaxPct", 20) / 100)),
     }
 
 
@@ -254,7 +249,7 @@ FORBIDDEN_PATTERNS = [
 ]
 
 
-def verify_layer2(book_dir: Path, N: int, allow_short: bool = False) -> tuple[bool, list]:
+def verify_layer2(book_dir: Path, N: int) -> tuple[bool, list]:
     errors = []
 
     # 读章节正文
@@ -281,13 +276,12 @@ def verify_layer2(book_dir: Path, N: int, allow_short: bool = False) -> tuple[bo
     th = compute_length_thresholds(cfg)
     word_count = count_cjk(body) if cfg["countingMode"] == "zh_chars" else len(body.split())
 
-    if word_count < th["hardMin"]:
+    # v0.1.14: hardGate = target 本身，无软门槛、无 allow-short 旁路
+    # 若本章需要偏短（转场/动作章），作者应显式降 book_rules.length.target 或指定本章 target
+    hard_gate = th["target"]
+    if word_count < hard_gate:
         errors.append(
-            f"字数 {word_count} < hardMin {th['hardMin']}（硬违规，即使声明允许偏短也不放过）"
-        )
-    elif word_count < th["softMin"] and not allow_short:
-        errors.append(
-            f"字数 {word_count} < softMin {th['softMin']}（若本章允许偏短，请用 --allow-short）"
+            f"字数 {word_count} < hardGate {hard_gate}（= target，无折扣；如需偏短请降本章 target）"
         )
     elif word_count > th["hardMax"]:
         errors.append(
@@ -561,11 +555,6 @@ def main():
     parser.add_argument("book_name", help="书名")
     parser.add_argument("N", type=int, help="章节号")
     parser.add_argument(
-        "--allow-short",
-        action="store_true",
-        help="允许字数低于 softMin（需在 PRE_WRITE_CHECK 声明）",
-    )
-    parser.add_argument(
         "--fix-progress",
         action="store_true",
         help="仅在检测到 PROGRESS.md 活跃 followup 段与 audits 聚合不一致时，自动重写该段（只覆盖 📌 活跃 followup 段，其他段不动）。重写完成后重跑一遍 Layer 2 再输出。",
@@ -581,7 +570,7 @@ def main():
 
     # 跑三层检查（保留内部逻辑不变）
     ok1, errs1 = verify_layer1(book_dir, args.N)
-    ok2, errs2 = verify_layer2(book_dir, args.N, allow_short=args.allow_short)
+    ok2, errs2 = verify_layer2(book_dir, args.N)
     ok3, errs3 = verify_layer3(book_dir, args.N)
 
     # --fix-progress: 若 Layer 2 里有 followup 段不一致错误，重写后重跑 Layer 2
@@ -594,7 +583,7 @@ def main():
             fixed, n = recompute_progress_followup(book_dir)
             if fixed:
                 print(f"🔧 --fix-progress 已生效：PROGRESS.md 📌 活跃 followup 段重写 {n} 条\n")
-                ok2, errs2 = verify_layer2(book_dir, args.N, allow_short=args.allow_short)
+                ok2, errs2 = verify_layer2(book_dir, args.N)
             else:
                 print("⚠️ --fix-progress 无法生效：PROGRESS.md 不存在或无 📌 活跃 followup 段\n")
 
