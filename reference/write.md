@@ -1163,106 +1163,21 @@ else:
 
 ---
 
-## 输出格式（inkOS 原 prompt 契约 · 历史参考）
+## 输出格式与 inkOS 迁移说明
 
-> ⚠️ **本节是 inkOS writer-prompts 原始输出契约**（`=== TAG ===` 包裹），已被 **Part I Step 4/5 的新 Markdown 格式**（`### PRE_WRITE_CHECK` / `### CHAPTER_TITLE` / `### CHAPTER_CONTENT` + Step 5 首稿字数块）取代。Skill 模式下 Writer **按 Part I 的新格式输出**，本节仅供 inkOS 数据互通时参考，不作为当前输出契约。
+Skill 模式下 Writer 按 **Part I Step 4/5 的 Markdown 输出**（`### PRE_WRITE_CHECK` / `### CHAPTER_TITLE` / `### CHAPTER_CONTENT` + `FIRST_DRAFT_WORD_COUNT` 五行块），Settler 按 **`reference/settler.md`** 的 `=== UPDATED_XXX ===` 7 个段输出。所有 schema（列名 / 字段 / 合并规则）canonical 源：
 
-### PRE_WRITE_CHECK 表
+| 旧 inkOS 输出段 | 现 skill 位置 |
+|---|---|
+| `=== PRE_WRITE_CHECK ===`（9 行）| Part I Step 4（15 行，严格超集）|
+| `=== CHAPTER_TITLE / CHAPTER_CONTENT ===` | Part I Step 5 + FIRST_DRAFT 块 |
+| `=== POST_SETTLEMENT ===` | `reference/settler.md` §POST_SETTLEMENT |
+| `=== UPDATED_STATE / HOOKS / LEDGER / SUBPLOTS / EMOTIONAL_ARCS / CHARACTER_MATRIX ===` | `reference/settler.md` + `reference/truth-schema.md`（列逐字一致）|
+| `=== CHAPTER_SUMMARY ===`（8 列）| `reference/settler.md` §UPDATED_CHAPTER_SUMMARIES（同 8 列，只追加不重写）|
 
-```
-=== PRE_WRITE_CHECK ===
-（必须输出Markdown表格）
-| 检查项 | 本章记录 | 备注 |
-|--------|----------|------|
-| 大纲锚定 | 当前卷名/阶段 + 本章应推进的具体节点 | 严禁跳过节点或提前消耗后续剧情 |
-| 上下文范围 | 第X章至第Y章 / 状态卡 / 设定文件 | |
-| 当前锚点 | 地点 / 对手 / 收益目标 | 锚点必须具体 |
-| 当前资源总量 | X | 与账本一致 |
-| 本章预计增量 | +X（来源） | 无增量写+0 |
-| 待回收伏笔 | Hook-A / Hook-B | 与伏笔池一致 |
-| 本章冲突 | 一句话概括 | |
-| 章节类型 | <题材章节类型> | |
-| 风险扫描 | OOC/信息越界/设定冲突/战力崩坏/节奏/词汇疲劳 | |
-```
+**Creative 模式**（仅写正文不结算，inkOS 旧 mode）：skill 默认不支持，写章总走完整 14 步 pipeline。如作者确有需求，在对话里显式说"本章只写正文，跳过 Step 9 结算 + Step 10 快照"，Writer 输出 Step 5 的 Markdown 三块后停止（index.json.status 标 `draft`，后续可再补结算）。
 
-### 章节标题与正文
-
-```
-=== CHAPTER_TITLE ===
-(章节标题，不含"第X章")
-
-=== CHAPTER_CONTENT ===
-(正文内容，目标<目标字数>字，允许区间<软下限>-<软上限>字)
-```
-
-### POST_SETTLEMENT 表
-
-```
-=== POST_SETTLEMENT ===
-（如有资源或伏笔变动，必须输出Markdown表格）
-| 结算项 | 本章记录 | 备注 |
-|--------|----------|------|
-| 资源账本 | 见下方 UPDATED_LEDGER（7 列含 事件ID）| 每个事件一行，事件ID 规则见 schema |
-| 重要资源 | 资源名 -> 贡献+Y（依据）| 无写"无" |
-| 伏笔变动 | 新增/回收/延后 Hook | 同步更新伏笔池 |
-```
-
-### 真相文件更新区块
-
-```
-=== UPDATED_STATE ===
-(更新后的完整状态卡，Markdown表格格式)
-
-=== UPDATED_LEDGER ===
-（见 ledger schema instruction，7 列含事件ID）
-
-=== UPDATED_HOOKS ===
-(更新后的完整伏笔池，Markdown表格格式)
-
-=== CHAPTER_SUMMARY ===
-| 章节 | 标题 | 出场人物 | 关键事件 | 状态变化 | 伏笔动态 | 情绪基调 | 章节类型 |
-|------|------|----------|----------|----------|----------|----------|----------|
-| N | 本章标题 | 角色1,角色2 | 一句话概括 | 关键变化 | H01埋设/H02推进 | 情绪走向 | 过渡/冲突/高潮/收束 |
-
-=== UPDATED_SUBPLOTS ===
-| 支线ID | 支线名 | 相关角色 | 起始章 | 最近活跃章 | 距今章数 | 状态 | 进度概述 | 回收ETA |
-|--------|--------|----------|--------|------------|----------|------|----------|---------|
-
-=== UPDATED_EMOTIONAL_ARCS ===
-| 角色 | 章节 | 情绪状态 | 触发事件 | 强度(1-10) | 弧线方向 |
-|------|------|----------|----------|------------|----------|
-
-=== UPDATED_CHARACTER_MATRIX ===
-(更新后的角色交互矩阵，分三个子表)
-
-### 角色档案
-| 角色 | 核心标签 | 反差细节 | 说话风格 | 性格底色 | 与主角关系 | 核心动机 | 当前目标 |
-|------|----------|----------|----------|----------|------------|----------|----------|
-
-### 相遇记录
-| 角色A | 角色B | 首次相遇章 | 最近交互章 | 关系性质 | 关系变化 |
-|-------|-------|------------|------------|----------|----------|
-
-### 信息边界
-| 角色 | 已知信息 | 未知信息 | 信息来源章 |
-|------|----------|----------|------------|
-```
-
-### Creative 模式（仅正文，不结算）
-
-```
-=== PRE_WRITE_CHECK ===
-（同上）
-
-=== CHAPTER_TITLE ===
-(章节标题，不含"第X章")
-
-=== CHAPTER_CONTENT ===
-(正文内容，目标字数区间同上)
-```
-
-【重要】Creative 模式只需输出上述三个区块（PRE_WRITE_CHECK、CHAPTER_TITLE、CHAPTER_CONTENT）。
-状态卡、伏笔池、摘要等追踪文件将由后续结算阶段处理，请勿输出。
+**inkOS 数据互通**：如需与 inkOS pipeline 互通 `=== TAG ===` 包裹格式 / JSON delta，参考 `/Users/admin/Codex/Project/inkOS/packages/core/src/agents/writer-prompts.ts` 原文，skill 不内嵌副本。
 
 ---
 
