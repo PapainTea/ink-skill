@@ -43,9 +43,26 @@
 
 **为什么要三份都 Read**：audit 不仅判"语义不合理"（37 维度主体），也要核对"机械违规"（禁令+敏感词+post-write）。这三份是确定性规则的独立源，audit.md 里的维度描述只是 pointer，具体规则以那三份为准。
 
-## 37 个审计维度
+## 37 个审计维度（+ v0.1.16 新增第 0 条硬约束覆盖，**永远启用**）
 
-以下维度按 id 顺序列出，note 为每个维度在 prompt 中附带的解释说明。实际启用的维度集合由 `genre profile.auditDimensions` + `book_rules.additionalAuditDimensions` + always-active（32 / 33）+ 条件激活（12 年代考据、28–31 番外专用、34–37 同人专用）决定。
+以下维度按 id 顺序列出，note 为每个维度在 prompt 中附带的解释说明。实际启用的维度集合由 `genre profile.auditDimensions` + `book_rules.additionalAuditDimensions` + always-active（0 / 32 / 33）+ 条件激活（12 年代考据、28–31 番外专用、34–37 同人专用）决定。
+
+0. **current_state 硬约束覆盖**（**永远启用** · v0.1.16 Fix #2）— 读上一章 Settler 写入 `story/current_state.md` 的「🔴 结构性硬约束」段（如存在）。对每一条硬约束，在本章 audit md 里以**固定标题** `## 硬约束覆盖` 的表格输出 ✓/❌/🟨 判定 + 一句说明：
+
+   ```markdown
+   ## 硬约束覆盖
+
+   | 硬约束（来自 current_state.md 🔴 段）| 本章是否覆盖 | 说明 |
+   |---|---|---|
+   | 约束 1 原文（截前 40 字）| ✓/❌/🟨 | 本章第 N 场景 / 第 N 段落如何覆盖 |
+   | 约束 2 原文 | ✓/❌/🟨 | ... |
+   ```
+
+   - `✓` = 本章正文已兑现该约束
+   - `❌` = 未覆盖 → 本章 audit 必须自动进入 Followup（ch+1 硬节点）
+   - `🟨` = 部分覆盖 / 与约束精神一致但执行不完整
+
+   **缺失该段 = 审计未完成**（verify-chapter.py v0.1.16 的 Layer 3 会检查："若 current_state 有 🔴 硬约束段，本章 audit md 必须含 `## 硬约束覆盖` 段"，缺则 warning）。若 current_state 无 🔴 硬约束段（通常是 ch1 或刚 init 的书），本段可写"本章无上游硬约束"一行。
 
 1. OOC检查 — 角色是否偏离性格底色；同人"canon 模式"下严格检查，"ooc 模式"下仅记录不判定失败
 2. 时间线检查 —（基础维度，无额外 note）

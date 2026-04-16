@@ -102,8 +102,12 @@ def parse_yaml_frontmatter(md_text: str) -> dict:
     return result
 
 
-def get_length_config(book_dir: Path) -> dict:
-    """读 book_rules.md 的 length 字段。若未配置，返回默认值"""
+def get_length_config(book_dir: Path, N: int = None) -> dict:
+    """读 book_rules.md 的 length 字段 + audit md 的 local_target_override（v0.1.16 Fix #4）。
+
+    优先级（低 → 高）：default 4500 < book_rules.length.target < audit frontmatter local_target_override
+    若 N 指定且 story/audits/ch-N.md 存在且 frontmatter 含 local_target_override（整数），则用它覆盖 target。
+    """
     book_rules = book_dir / "story/book_rules.md"
     defaults = {
         "target": 4500,
@@ -111,11 +115,21 @@ def get_length_config(book_dir: Path) -> dict:
         "hardMaxPct": 20,        # 超长压缩门槛
         "countingMode": "zh_chars",
     }
-    if not book_rules.exists():
-        return defaults
-    fm = parse_yaml_frontmatter(book_rules.read_text(encoding="utf-8"))
-    length = fm.get("length", {})
-    out = {**defaults, **length}
+    out = {**defaults}
+    if book_rules.exists():
+        fm = parse_yaml_frontmatter(book_rules.read_text(encoding="utf-8"))
+        length = fm.get("length", {})
+        out = {**out, **length}
+
+    # v0.1.16 Fix #4: audit frontmatter local_target_override（章节 target 临时覆盖）
+    if N is not None:
+        audit_md = book_dir / f"story/audits/ch-{N}.md"
+        if audit_md.exists():
+            afm = parse_yaml_frontmatter(audit_md.read_text(encoding="utf-8"))
+            override = afm.get("local_target_override")
+            if override is not None and isinstance(override, int) and override > 0:
+                out["target"] = override
+                out["_target_source"] = f"audit frontmatter local_target_override={override}"
     return out
 
 
@@ -271,17 +285,18 @@ def verify_layer2(book_dir: Path, N: int) -> tuple[bool, list]:
         if matches:
             errors.append(f"正文出现 {name}，数量 {len(matches)}")
 
-    # 字数检查
-    cfg = get_length_config(book_dir)
+    # 字数检查（v0.1.16 Fix #4: 传 N 给 get_length_config 以支持 audit local_target_override）
+    cfg = get_length_config(book_dir, N)
     th = compute_length_thresholds(cfg)
     word_count = count_cjk(body) if cfg["countingMode"] == "zh_chars" else len(body.split())
 
     # v0.1.14: hardGate = target 本身，无软门槛、无 allow-short 旁路
-    # 若本章需要偏短（转场/动作章），作者应显式降 book_rules.length.target 或指定本章 target
+    # v0.1.16: 若 audit frontmatter 声明 local_target_override，target 按 audit 覆盖值（见 cfg["_target_source"]）
     hard_gate = th["target"]
+    override_note = f"（{cfg.get('_target_source')}）" if cfg.get("_target_source") else "（= target，无折扣；如需偏短请在 audit frontmatter 加 local_target_override）"
     if word_count < hard_gate:
         errors.append(
-            f"字数 {word_count} < hardGate {hard_gate}（= target，无折扣；如需偏短请降本章 target）"
+            f"字数 {word_count} < hardGate {hard_gate}{override_note}"
         )
     elif word_count > th["hardMax"]:
         errors.append(
@@ -388,12 +403,30 @@ def verify_layer3(book_dir: Path, N: int) -> tuple[bool, list]:
       - callout 里提 "新增 X 角色" → character_matrix.md 有新行
       - callout 里提 "ledger / 资源 / 情报权" → particle_ledger.md 有 ch N 行
     如果 audits 未声明某个 truth file 变动 → 不检查（条件性）
+
+    v0.1.16 Fix #2 (C.1)：结构检查 — 若 current_state.md 有 "🔴 结构性硬约束" 段，
+    则本章 audit md 必须含 "## 硬约束覆盖" 段（存在性检查，不匹配具体内容）。
     """
     errors = []
     audit_path = book_dir / f"story/audits/ch-{N}.md"
     if not audit_path.exists():
         return (True, [])  # Layer 1 已处理
-    audit_text = audit_path.read_text(encoding="utf-8").lower()
+    audit_raw = audit_path.read_text(encoding="utf-8")
+    audit_text = audit_raw.lower()
+
+    # v0.1.16 Fix #2 (C.1): 硬约束覆盖段存在性
+    cs_path = book_dir / "story/current_state.md"
+    if cs_path.exists():
+        cs_text = cs_path.read_text(encoding="utf-8")
+        # 检测 current_state 是否有 🔴 硬约束段（宽松匹配：任一关键词出现即算）
+        has_hard_constraints = ("🔴 结构性硬约束" in cs_text) or ("结构性硬约束" in cs_text and "🔴" in cs_text)
+        if has_hard_constraints:
+            has_coverage = "## 硬约束覆盖" in audit_raw or "# 硬约束覆盖" in audit_raw
+            if not has_coverage:
+                errors.append(
+                    "HARD_CONSTRAINTS: current_state.md 含 🔴 结构性硬约束段，"
+                    "但本章 audit md 缺失 `## 硬约束覆盖` 段（见 reference/audit.md 维度 0）"
+                )
 
     checks = [
         (
@@ -529,8 +562,12 @@ def classify_l3_errors(errors: list) -> dict:
         "emotional_arcs": [],
         "particle_ledger": [],
         "character_matrix": [],
+        "hard_constraints": [],  # v0.1.16 Fix #2 (C.1)
     }
     for e in errors:
+        if e.startswith("HARD_CONSTRAINTS:"):
+            buckets["hard_constraints"].append(e)
+            continue
         for tf in buckets:
             if tf in e:
                 buckets[tf].append(e)
@@ -549,17 +586,56 @@ def print_step(label: str, errors: list) -> bool:
     return False
 
 
+def run_mechanical_only(filepath: Path) -> int:
+    """v0.1.16 Fix #5: 仅扫禁令（破折号/不是而是/分析术语/markdown 泄漏），不扫字数不扫 Layer 1/3。
+    用于 Step 11 写入 chapters/ 后 Step 12 之前的 pre-save 机械闸门。
+    """
+    if not filepath.exists():
+        print(f"❌ 文件不存在：{filepath}", file=sys.stderr)
+        return 99
+    content = filepath.read_text(encoding="utf-8")
+    body_lines = content.splitlines()
+    body = "\n".join(body_lines[1:]) if body_lines and body_lines[0].startswith("# 第") else content
+    errors = []
+    for name, pattern in FORBIDDEN_PATTERNS:
+        matches = pattern.findall(body)
+        if matches:
+            errors.append(f"{name}：{len(matches)} 处")
+    print(f"=== 机械规则 pre-save 扫描：{filepath.name} ===")
+    if not errors:
+        print("  ✅ 禁令扫描全绿（可进入 Step 12 完整 verify）")
+        return 0
+    print("  ❌ 发现禁令违规：")
+    for e in errors:
+        print(f"     · {e}")
+    print("\n  → 必须 spot-fix 原位修复后重跑本命令；不得进入 Step 12")
+    return 2
+
+
 def main():
     parser = argparse.ArgumentParser(description="章节完成流程审核（per-step checklist）")
-    parser.add_argument("books_root", help="books 根目录绝对路径")
-    parser.add_argument("book_name", help="书名")
-    parser.add_argument("N", type=int, help="章节号")
+    parser.add_argument("books_root", nargs="?", help="books 根目录绝对路径")
+    parser.add_argument("book_name", nargs="?", help="书名")
+    parser.add_argument("N", nargs="?", type=int, help="章节号")
+    parser.add_argument(
+        "--mechanical-only",
+        metavar="FILEPATH",
+        help="[v0.1.16 Fix #5] 仅扫禁令（破折号/不是而是/分析术语/markdown 泄漏），不扫字数不跑 Layer 1/3。Step 11 写入 chapters/ 后 Step 12 之前的 pre-save 机械闸门。传入章节文件路径，与 books_root/book_name/N 互斥。",
+    )
     parser.add_argument(
         "--fix-progress",
         action="store_true",
         help="仅在检测到 PROGRESS.md 活跃 followup 段与 audits 聚合不一致时，自动重写该段（只覆盖 📌 活跃 followup 段，其他段不动）。重写完成后重跑一遍 Layer 2 再输出。",
     )
     args = parser.parse_args()
+
+    # v0.1.16 Fix #5: --mechanical-only pre-save 模式（早 return）
+    if args.mechanical_only:
+        sys.exit(run_mechanical_only(Path(args.mechanical_only)))
+
+    # 正常模式要求 books_root/book_name/N
+    if not (args.books_root and args.book_name and args.N is not None):
+        parser.error("正常模式需要 books_root / book_name / N 三个位置参数（或用 --mechanical-only FILEPATH）")
 
     book_dir = Path(args.books_root) / args.book_name
     if not book_dir.is_dir():
@@ -607,6 +683,10 @@ def main():
     print("【Step 7 · 审计】")
     s_audit = print_step("story/audits/ch-N.md 存在", l1["audit"])
     s_fup = print_step("audit 末尾 `## Followup` 段存在（v0.1.10）", l2["followup"])
+    s_hc = print_step(
+        "硬约束覆盖段（v0.1.16 Fix#2：若 current_state 有 🔴 硬约束则 audit md 必须含 `## 硬约束覆盖`）",
+        l3["hard_constraints"],
+    )
     print()
 
     print("【Step 9 · 结算：7 个 truth files】")
@@ -643,7 +723,7 @@ def main():
     print()
 
     # 汇总
-    all_steps = [s_write, s_ban, s_len, s_audit, s_fup, s_cs, s_sum,
+    all_steps = [s_write, s_ban, s_len, s_audit, s_fup, s_hc, s_cs, s_sum,
                  s_hooks, s_sub, s_emo, s_led, s_cm, s_snap, s_idx]
     total_pass = sum(1 for s in all_steps if s)
     total = len(all_steps)
