@@ -120,20 +120,26 @@
 请严格按照 === TAG === 格式输出分析结果。
 ```
 
-### Step 4: 输出格式（=== TAG === 分隔，与写章 pipeline 一致）
+### Step 4: 输出格式（=== TAG === 分隔，共 9 段 · v0.1.16.2 Finding #6 精简）
+
+**与写章 pipeline 的差异**：
+- **删** `CHAPTER_CONTENT`（正文已在磁盘，reanalyze 不应复述——浪费 token + 有 LLM 误改正文字符漂移风险）
+- **删** `PRE_WRITE_CHECK`（prospective 写前自检，与 reanalyze 的 retrospective 立场相反；15 字段 100% 与 UPDATED_XXX / CHAPTER_SUMMARY / 审计维度 33 重复）
+- **保留** `CHAPTER_TITLE`（改语义：作者若从外部粘贴无 `# 第 N 章 <标题>` header 的纯文本正文，reanalyze 推断标题输出，作者确认后回填文件名/正文首行/`index.json.title`）
+- **保留** `POST_SETTLEMENT`（改语义：本次分析的 executive summary，给作者看的人读聚合摘要；UPDATED_XXX 是机器读的 delta 分散 7 段，POST_SETTLEMENT 是一段话的"本章分析出 X 个事实、推进 Y 条伏笔、新增 Z 角色"概括；不写入任何 truth file）
 
 ```
 === CHAPTER_TITLE ===
-（从正文标题行提取或推断章节标题，只输出标题文字）
-
-=== CHAPTER_CONTENT ===
-（原样输出正文内容，不做任何修改）
-
-=== PRE_WRITE_CHECK ===
-（留空，分析模式不需要写作自检）
+若正文首行已有 `# 第 N 章 <标题>` header，输出标题文字即可（作自证）。
+若正文首行无 header（纯文本导入），从正文推断一个标题输出；作者确认后可用来重命名 `000N_<标题>.md` / 写入正文首行 / 更新 `index.json.title`。
 
 === POST_SETTLEMENT ===
-（留空，分析模式不需要写后结算）
+本次 reanalyze 的 executive summary（人读，1-3 句话）：
+- 分析出 N 个新事实（关键事件 1-2 条）
+- 推进 N 条伏笔（hook_id 列表，从 UPDATED_HOOKS 抽取）
+- 新增 / 调整 N 个角色（从 UPDATED_CHARACTER_MATRIX 抽取）
+- 本章主角状态变化（一句话，从 UPDATED_STATE 抽取）
+不写入任何 truth file，仅在对话输出供作者概览。
 
 === UPDATED_STATE ===
 更新后的状态卡（Markdown 表格），反映本章结束时的最新状态：
