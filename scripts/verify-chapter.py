@@ -260,7 +260,81 @@ FORBIDDEN_PATTERNS = [
     ("markdown 有序列表", re.compile(r"^\d+\. ", re.MULTILINE)),
     ("markdown 粗体 **", re.compile(r"\*\*[^*\n]+\*\*")),
     ("markdown callout", re.compile(r"^> \[!", re.MULTILINE)),
+    # v0.1.17 新增：账本语言 / 学术语言 / 元叙事字面量（ch19 + ch20 实测漏网样本）
+    (
+        "账本字段变动（如'内伤负担从9上到10' / '从七十二到八十四'）",
+        re.compile(
+            r"[\u4e00-\u9fa5]{0,8}从\s*[0-9零一二三四五六七八九十百千]+\s*"
+            r"(上到|升到|涨到|加到|回落到|降到|落到|减到|到)\s*"
+            r"[0-9零一二三四五六七八九十百千]+"
+        ),
+    ),
+    (
+        "账本变动（如'升了十二' / '降了 2'）",
+        re.compile(r"(升了|涨了|降了|落了|加了|减了)\s*[0-9零一二三四五六七八九十百千]+"),
+    ),
+    (
+        "赋值语法 = 泄漏（如'微震单有 = 无触发'）",
+        re.compile(r"[\u4e00-\u9fa5]{2,10}\s*=\s*[\u4e00-\u9fa5]{1,10}"),
+    ),
+    (
+        "元叙事章号字面量（如'ch18 那次'）",
+        re.compile(r"\bch\s*\d+\b", re.IGNORECASE),
+    ),
+    (
+        "学术论文语言（假说/数据/结论/验证/监测线/临界 等）",
+        re.compile(
+            r"(双条件假说|三条件假说|假说基本成立|三组数据|"
+            r"[一二三四五六七八九十\d]+组数据|\b假设验证\b|条件可构造性|"
+            r"触发条件后|监测线|反应的临界)"
+        ),
+    ),
+    (
+        "列表式编号（如'第六条' / '第二条线'泄漏进叙事）",
+        re.compile(r"第\s*[一二三四五六七八九十\d]+\s*条(监测|线|数据|记录|法则|规则)"),
+    ),
 ]
+
+
+# v0.1.17: 承诺字数与引号实际字数一致性检查
+# 'X 说了两个字。\n\n"睡。"' ← 承诺 2 个字，实际 1 个，这种 Writer 口头惯性 bug 单独处理
+_SPEECH_COUNT_RE = re.compile(r"说了\s*([一二三四五六七八九十两\d]+)\s*个?字")
+_QUOTE_RE = re.compile(r'[\u201c"「『]([^\u201d\u201c"」『』\n]+)[\u201d"」』]')
+_CN_NUM_MAP = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10, "两": 2}
+
+
+def _parse_num(s: str):
+    if s.isdigit():
+        return int(s)
+    if s in _CN_NUM_MAP:
+        return _CN_NUM_MAP[s]
+    # '十二' 到 '二十九' 等复合数字暂不处理（小说里罕见）
+    return None
+
+
+def check_speech_count_mismatches(body: str) -> list:
+    """检查'说了N字'承诺与紧跟的引号内实际中文字符数是否一致。
+
+    只在承诺数字 ≤ 10 时检查（小说里几乎不会出现'说了三十七字'这种叙述）。
+    引号内只数中文字符，标点 / 空格 / 符号不计入。
+    """
+    errors = []
+    for m in _SPEECH_COUNT_RE.finditer(body):
+        claimed = _parse_num(m.group(1))
+        if claimed is None or claimed > 10:
+            continue
+        # 承诺点之后 200 字窗口内找第一个引号对
+        tail = body[m.end():m.end() + 200]
+        qm = _QUOTE_RE.search(tail)
+        if not qm:
+            continue
+        quoted = qm.group(1)
+        actual = len(re.sub(r"[^\u4e00-\u9fa5]", "", quoted))
+        if actual != claimed:
+            errors.append(
+                f"'说了{m.group(1)}字' 承诺 {claimed}，引号内实际 {actual}（\"{quoted}\"）"
+            )
+    return errors
 
 
 def verify_layer2(book_dir: Path, N: int) -> tuple[bool, list]:
@@ -279,11 +353,17 @@ def verify_layer2(book_dir: Path, N: int) -> tuple[bool, list]:
     else:
         body = content
 
-    # 扫描禁令
-    for name, pattern in FORBIDDEN_PATTERNS:
+    # 扫描禁令（v0.1.17: 基底规则 + leak-catalog 增量规则）
+    all_patterns = FORBIDDEN_PATTERNS + load_leak_catalog()
+    for name, pattern in all_patterns:
         matches = pattern.findall(body)
         if matches:
             errors.append(f"正文出现 {name}，数量 {len(matches)}")
+
+    # v0.1.17: 承诺字数与引号实际字数一致性
+    speech_mismatches = check_speech_count_mismatches(body)
+    for sm in speech_mismatches:
+        errors.append(f"承诺字数与引号不符：{sm}")
 
     # 字数检查（v0.1.16 Fix #4: 传 N 给 get_length_config 以支持 audit local_target_override）
     cfg = get_length_config(book_dir, N)
@@ -586,9 +666,54 @@ def print_step(label: str, errors: list) -> bool:
     return False
 
 
+def load_leak_catalog() -> list:
+    """v0.1.17 自迭代机制：从 <SKILL_DIR>/reference/leak-catalog.md 的 LEAK-CATALOG 段读取增量 regex。
+
+    格式：markdown 表，每行 `| 类别 | `regex` | 示例 | 日期 | 来源 |`。
+    返回 [(name, compiled_pattern), ...]。regex 编译失败或不能匹配自己的示例时跳过并打 warning。
+    """
+    catalog_path = Path(__file__).parent.parent / "reference" / "leak-catalog.md"
+    if not catalog_path.exists():
+        return []
+    text = catalog_path.read_text(encoding="utf-8")
+    m = re.search(r"<!-- LEAK-CATALOG-START -->(.*?)<!-- LEAK-CATALOG-END -->", text, re.DOTALL)
+    if not m:
+        return []
+    section = m.group(1)
+    patterns = []
+    for line in section.splitlines():
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        # 跳过表头和分隔行
+        if "---" in line or "类别" in line:
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        category, regex_cell, example = cells[0], cells[1], cells[2]
+        # regex 必须用反引号包
+        rm = re.match(r"^`(.+)`$", regex_cell)
+        if not rm:
+            continue
+        regex_str = rm.group(1)
+        try:
+            pattern = re.compile(regex_str)
+        except re.error as e:
+            print(f"⚠ leak-catalog: '{category}' regex 编译失败: {e}", file=sys.stderr)
+            continue
+        # self-test: regex 应能匹配自己的示例
+        if example and not pattern.search(example):
+            print(f"⚠ leak-catalog: '{category}' regex 不能匹配示例 {example!r}，跳过", file=sys.stderr)
+            continue
+        patterns.append((f"{category}（catalog）", pattern))
+    return patterns
+
+
 def run_mechanical_only(filepath: Path) -> int:
     """v0.1.16 Fix #5: 仅扫禁令（破折号/不是而是/分析术语/markdown 泄漏），不扫字数不扫 Layer 1/3。
     用于 Step 11 写入 chapters/ 后 Step 12 之前的 pre-save 机械闸门。
+    v0.1.17: 额外加载 reference/leak-catalog.md 的增量模式。
     """
     if not filepath.exists():
         print(f"❌ 文件不存在：{filepath}", file=sys.stderr)
@@ -596,11 +721,15 @@ def run_mechanical_only(filepath: Path) -> int:
     content = filepath.read_text(encoding="utf-8")
     body_lines = content.splitlines()
     body = "\n".join(body_lines[1:]) if body_lines and body_lines[0].startswith("# 第") else content
+    all_patterns = FORBIDDEN_PATTERNS + load_leak_catalog()
     errors = []
-    for name, pattern in FORBIDDEN_PATTERNS:
+    for name, pattern in all_patterns:
         matches = pattern.findall(body)
         if matches:
             errors.append(f"{name}：{len(matches)} 处")
+    # v0.1.17: 承诺字数与引号实际字数一致性
+    for sm in check_speech_count_mismatches(body):
+        errors.append(f"承诺字数不符：{sm}")
     print(f"=== 机械规则 pre-save 扫描：{filepath.name} ===")
     if not errors:
         print("  ✅ 禁令扫描全绿（可进入 Step 12 完整 verify）")

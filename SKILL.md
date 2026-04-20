@@ -69,16 +69,18 @@ python3 <SKILL_DIR>/scripts/verify-chapter.py <booksRoot> <书名> <N_latest>
   > 之前有 agent 可能没跑完整 pipeline（漏 Step 10 快照 / Step 11 索引 / Step 12 verify），留下脏数据。在脏地基上继续写，damage 会累积。
   > 三选一：a) 对 ch 1-{N_latest} 批量 verify 给全量损伤地图；b) 直接修 ch {N_latest}；c) 你先看看再说。
 
-### 步骤 d — 按意图加载 truth files
+### 步骤 d — 按意图加载 reference 模块（不是加载 truth files）
 
-读 PROGRESS.md 的"📚 真相文件索引"段，按任务意图选读：
+根据任务意图 Read 对应的 `reference/*.md` 模块（见 §3 路由表）。**truth files 的完整读取清单由 reference 模块的 Step 2 规定，不在本 SKILL.md 里列**——避免双版本清单误导 LLM 读半。
 
-| 意图 | 优先 Read |
-|------|-----------|
-| 写章 / 续写 | `current_state.md` + `chapter_summaries.md` |
-| 审计 | `character_matrix.md` + `pending_hooks.md` |
-| 修订 | 对应章节正文 + `story/audits/ch-N.md` |
-| 查询类 | 按问题内容按需读 |
+| 意图 | 触发后加载的 reference 模块 |
+|------|-----------------------------|
+| 写章 / 续写 / 连写 | `reference/write.md`（其 Step 2 列 12 个必读文件）|
+| 审计 | `reference/audit.md`（其 Step 2 列所需 truth files）|
+| 修订 | `reference/revise.md`（其 Step 2 列所需 truth files）|
+| 查询类 | 不加载模块，按 §3 查询表按需读单文件 |
+
+**硬律**：加载 reference 模块后，必须按该模块 Step 2 的清单全读，禁止只读"本表的精简版"就进入后续步骤。
 
 ---
 
@@ -250,14 +252,17 @@ python3 <SKILL_DIR>/scripts/verify-chapter.py <booksRoot> <书名> <N_latest>
     分流判定: <"推剧情续写" | "扩写补细节" | "字数达标">
     ```
 
+    **字数必须来自脚本实测，禁止估算**（v0.1.17）：`FIRST_DRAFT_WORD_COUNT` 的数字必须是 Bash 对磁盘章节文件调 Python 计数的 stdout，不得凭感觉估。LLM 估出来的数会朝 target 方向偏（已实测 2841 虚报成 4421，误差 +55%，直接把"推剧情续写"误判成"扩写补细节"）。具体命令见 `reference/write.md` 首稿自测段。
+
     **视为违规的情形**：
     - 只贴正文不贴字数块 → Step 6 当作 Writer 未交稿，要求重写
+    - 贴了字数但**上方三条消息内没有**一次 Bash 计数的 tool_result → 估算 = 违规
     - 贴了字数但"分流判定"与数值不符（例：首稿 2800，target 4500，却标"扩写补细节"）→ 字数捏造 / 判定欺骗
     - 先不贴、等 Step 6 质询才补 → 等于在 Step 6 手里而非 Writer 交稿时暴露，**绕过首稿 gate**
 
     **违反后果**：Writer 本轮交稿作废，Step 6 必须要求重写整章；已触发的扩写/续写循环结果不予采信（扩写只能建立在"首稿透明"基础上）。
 
-    **自检触发点**：准备输出 `### CHAPTER_CONTENT` 正文结束前 → 检查字数块 5 行是否都会在同一条消息内出现，没有就补上再发。
+    **自检触发点**：准备输出 `### CHAPTER_CONTENT` 正文结束前 → (a) 章节文件已 Write 到磁盘？(b) Bash 计数跑过了？(c) 字数块 5 行都在同一条消息内？缺一项就停下补。
 
 ---
 
