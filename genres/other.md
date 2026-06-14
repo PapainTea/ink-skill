@@ -4,6 +4,7 @@ id: other
 chapterTypes: ["开篇章", "推进章", "布局章", "过渡章", "回收章", "高潮章", "转折章", "回忆章"]
 fatigueWords: ["震惊", "不可思议", "难以置信", "深吸一口气", "仿佛", "不禁", "宛如", "竟然", "忽然", "忽地", "猛地", "猛然", "顿时", "瞬间", "蓦然"]
 numericalSystem: false
+quantitativeBodyState: false  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: false
 eraResearch: false
 pacingRule: "每 2-3 章必须有一个明确的进展或反馈（信息 / 关系 / 处境 / 决策），不得连续 3 章无新推进"

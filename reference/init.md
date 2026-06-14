@@ -393,6 +393,53 @@ pipeline:                                            # 写章流程行为开关
 | 当前冲突   | <当前冲突>            |
 ```
 
+### "主角状态"字段的体裁分支（v0.1.18 硬律）
+
+Init 时根据 `<SKILL_DIR>/genres/<genre_id>.md` 的 `quantitativeBodyState` 字段**分支生成**主角状态字段的形态：
+
+**`quantitativeBodyState=true`**（sci-fi / litrpg / dungeon-core / system-apocalypse / tower-climber）——允许数值：
+
+```markdown
+| 主角状态 | HP 100/100, MP 50/50, 疲劳 12, 内伤 0 |
+```
+
+**`quantitativeBodyState=false`**（xianxia / xuanhuan / cultivation / urban / cozy / horror / isekai / progression / romantasy / other）——**必须质性枚举**：
+
+```markdown
+| 主角状态 | 肋下旧伤沉，气力散，呼吸浅 |
+```
+
+或展开为多行结构化质性：
+
+```markdown
+| 字段       | 值                    |
+|------------|-----------------------|
+| 内伤       | 沉（5 档中第 3 档）   |
+| 气力       | 散                    |
+| 呼吸       | 浅                    |
+| 心跳       | 稳                    |
+```
+
+**五档质性枚举参考**（按严重度递进）：
+- 内伤 / 旧伤：`无 / 浅 / 沉 / 紧 / 撕 / 碎`
+- 气力 / 灵力：`盈 / 平 / 散 / 竭 / 枯`
+- 心跳：`稳 / 急 / 乱 / 漏 / 跳到喉口`
+- 呼吸：`匀 / 浅 / 紧 / 滞 / 断`
+
+### particle_ledger.md 的身体状态分支
+
+若本书用 `particle_ledger.md` 追踪身体状态类资源（内伤 / 气力 / 魂力 / 疲劳），同样按体裁分支：
+- `quantitativeBodyState=true` → 值列可用数字（`期初 9 变动 +1 期末 10`）
+- `quantitativeBodyState=false` → 值列用质性枚举（`期初 沉 变动 紧 期末 紧`）
+
+**可数外部资源不受此约束**：金币 / 情报权 / 箭数 / 粮草等**始终可用数字**，不论体裁。
+
+### 为什么 init 要做分支（治本）
+
+Writer 读 truth files 时会把字段值当角色可感知的状态照搬进正文。如果 init 时身体字段存的就是数字（`内伤: 9`），Writer 在非数值体裁书里会写出"内伤稳在 9"这类泄漏正文。详见 `reference/writing-bans.md §F 身体状态刻度泄漏禁令` + `reference/truth-schema.md §0`。
+
+**Init 阶段分支是最便宜的防御点**：一次性按体裁写对字段形态，后续 Settler / Writer / Audit 全流程都不会再接触数字。
+
 ---
 
 ## 5. author_intent.md — 作者意图（可选）

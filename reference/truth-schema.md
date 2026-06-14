@@ -29,6 +29,63 @@
 
 ---
 
+## §0 身体状态字段的体裁分支约定（v0.1.18）
+
+Truth files 中**身体/感觉/心率/情绪**等"角色内部感知"类字段的**表述形态**由体裁配置决定：
+
+读取 `<书根>/genres/<genre_id>.md` 的 `quantitativeBodyState` 字段：
+
+| `quantitativeBodyState` | 体裁举例 | 字段形态 |
+|---|---|---|
+| `true` | litrpg / dungeon-core / system-apocalypse / tower-climber / sci-fi | **允许数值**（`hp: 87` / `心率: 84` / `内伤: 9`），游戏化/科幻语境下角色确实能感知数字 |
+| `false` | xianxia / xuanhuan / cultivation / urban / cozy / isekai / progression / horror / romantasy / other | **必须质性**（`内伤: 沉` / `气力: 散` / `心跳: 漏一拍`），角色不应知道自己的离散等级或精确读数 |
+
+### 适用范围
+
+**适用**：
+- `current_state.md` 的"主角状态 / 身体 / 心率 / 疲劳"字段
+- `particle_ledger.md` 中身体/精神类资源（内伤 / 旧伤 / 气力 / 魂力 / 灵力 / 精神力 / 疲劳 / 情绪）
+
+**不适用**（数字保留）：
+- 可数资源（金币 / 情报权 / 人情债 / 弹药 / 箭数 / 粮草 等**外部计量物**）
+- 时间 / 距离 / 人数 / 章节号等客观度量
+- 境界层级名（`金丹`、`元婴` 等**词化档位**不是数字）
+
+### 定量体裁 (`quantitativeBodyState=true`) 的身体字段示例
+
+```yaml
+# current_state.md
+主角状态: HP 87 / MP 42 / 疲劳 63
+内伤: 9
+心率静息: 72
+```
+
+### 质性体裁 (`quantitativeBodyState=false`) 的身体字段示例
+
+```yaml
+# current_state.md
+主角状态: 肋下旧伤沉，气力散，心跳急
+内伤: 沉（较上章紧半寸）
+呼吸: 浅，喉底发紧
+```
+
+**五档质性枚举参考**（按严重度递进，可按书调整）：
+- 内伤 / 旧伤：`无 / 浅 / 沉 / 紧 / 撕 / 碎`
+- 气力 / 灵力：`盈 / 平 / 散 / 竭 / 枯`
+- 心跳：`稳 / 急 / 乱 / 漏 / 跳到喉口`
+- 呼吸：`匀 / 浅 / 紧 / 滞 / 断`
+
+### Writer 读 truth file 时的硬律
+
+**不论本书体裁是 true 还是 false**：
+- **作者视角追踪字段**（Settler 写的 ledger 行）**不得原样出现在正文**
+- `quantitativeBodyState=false` 时：正文描写必须是感官语言（钝痛 / 紧 / 撕 / 漏一拍），不得写"旧伤 9"、"心率七十"
+- `quantitativeBodyState=true` 时：正文可以出现游戏化数字，但仍应穿插感官层做混合描写（纯读数会变 patch note）
+
+**init 流程分支**：新建书时 init.md 会按 genre 的 `quantitativeBodyState` 决定 `current_state.md` 的身体字段是数字还是枚举。具体见 `reference/init.md`。
+
+---
+
 ## 1. current_state.md（当前状态卡）
 
 ### 格式

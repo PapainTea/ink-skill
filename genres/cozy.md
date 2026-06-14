@@ -5,6 +5,7 @@ language: en
 chapterTypes: ["Slice-of-Life", "Community", "Setup", "Transition", "Payoff", "Craft", "Seasonal", "Small Mystery"]
 fatigueWords: ["delve", "tapestry", "testament", "intricate", "pivotal", "vibrant", "comprehensive", "nuanced", "embark", "foster", "underscore", "bolstered", "crucial", "palpable", "resonant", "idyllic"]
 numericalSystem: false
+quantitativeBodyState: false  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: false
 eraResearch: false
 pacingRule: "Slow, meditative pacing. Each chapter advances an emotional arc or community bond. Seasonal/cyclical structure works well."

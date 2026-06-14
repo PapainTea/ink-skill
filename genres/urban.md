@@ -4,6 +4,7 @@ id: urban
 chapterTypes: ["商战章", "社交章", "布局章", "过渡章", "回收章", "危机章"]
 fatigueWords: ["冷笑", "不可思议", "震惊", "难以置信", "深吸一口气", "眼中闪过一丝", "仿佛", "不禁", "宛如", "竟然", "核心动机", "信息边界", "信息落差", "核心风险"]
 numericalSystem: false
+quantitativeBodyState: false  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: false
 eraResearch: true
 pacingRule: "每 2-3 章一个小回报：商业收益、人脉拓展、对手受挫、信息优势"

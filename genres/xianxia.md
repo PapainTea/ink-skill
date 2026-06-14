@@ -4,6 +4,7 @@ id: xianxia
 chapterTypes: ["战斗章", "悟道章", "布局章", "过渡章", "回收章"]
 fatigueWords: ["冷笑", "蝼蚁", "倒吸凉气", "瞳孔骤缩", "天道", "大道", "因果", "气运", "仿佛", "不禁", "宛如", "竟然"]
 numericalSystem: true
+quantitativeBodyState: false  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: true
 eraResearch: false
 pacingRule: "修炼/悟道与战斗交替，每3-5章一次小突破或关键收获"

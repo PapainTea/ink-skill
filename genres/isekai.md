@@ -5,6 +5,7 @@ language: en
 chapterTypes: ["Exploration", "Adaptation", "Setup", "Transition", "Payoff", "Combat", "Culture Clash", "Homeworld Echo"]
 fatigueWords: ["delve", "tapestry", "testament", "intricate", "pivotal", "vibrant", "comprehensive", "nuanced", "embark", "foster", "underscore", "bolstered", "crucial", "palpable", "resonant", "otherworldly"]
 numericalSystem: false
+quantitativeBodyState: false  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: true
 eraResearch: false
 pacingRule: "Establish new world rules by chapter 3. Cultural adaptation and fish-out-of-water moments every 2-3 chapters early. Skip tutorial-town syndrome — no 50 pages hitting rats."

@@ -5,6 +5,7 @@ language: en
 chapterTypes: ["Progression", "Setup", "Transition", "Payoff", "Combat"]
 fatigueWords: ["delve", "tapestry", "testament", "intricate", "pivotal", "vibrant", "comprehensive", "nuanced", "embark", "foster", "underscore", "bolstered", "crucial"]
 numericalSystem: true
+quantitativeBodyState: true  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: true
 eraResearch: false
 pacingRule: "Every 1-3 chapters early: level-up or stat gain. Mid-story every 5-10 chapters. Late story: tier transitions spaced far apart."

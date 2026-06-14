@@ -4,6 +4,7 @@ id: xuanhuan
 chapterTypes: ["战斗章", "布局章", "过渡章", "回收章"]
 fatigueWords: ["冷笑", "蝼蚁", "倒吸凉气", "瞳孔骤缩", "不可置信", "轰然炸裂", "满场死寂", "难以置信", "仿佛", "不禁", "宛如", "竟然"]
 numericalSystem: true
+quantitativeBodyState: false  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: true
 eraResearch: false
 pacingRule: "三章内必有明确反馈：打脸、收益兑现、信息反转、地位变化"

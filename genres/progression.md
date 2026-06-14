@@ -5,6 +5,7 @@ language: en
 chapterTypes: ["Training", "Breakthrough", "Setup", "Transition", "Payoff", "Application", "Rivalry"]
 fatigueWords: ["delve", "tapestry", "testament", "intricate", "pivotal", "vibrant", "comprehensive", "nuanced", "embark", "foster", "underscore", "bolstered", "crucial", "palpable", "resonant", "seamless"]
 numericalSystem: false
+quantitativeBodyState: false  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: true
 eraResearch: false
 pacingRule: "Tier advancement every 2-4 chapters early, every 8-15 mid-story, every 20+ late-story. Each tier must feel fundamentally different."

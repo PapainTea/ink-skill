@@ -5,6 +5,7 @@ language: en
 chapterTypes: ["Survival", "Combat", "Setup", "Transition", "Payoff", "Faction", "System Reveal", "Scavenge"]
 fatigueWords: ["delve", "tapestry", "testament", "intricate", "pivotal", "vibrant", "comprehensive", "nuanced", "embark", "foster", "underscore", "bolstered", "crucial", "palpable", "resonant", "relentless"]
 numericalSystem: true
+quantitativeBodyState: true  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: true
 eraResearch: false
 pacingRule: "Early (ch 1-15): survival pressure every chapter. Mid (ch 15-50): power-up + faction politics every 3-5 chapters. Late: expansion and existential threats."

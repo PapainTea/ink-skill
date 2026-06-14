@@ -5,6 +5,7 @@ language: en
 chapterTypes: ["Exploration", "Combat", "Setup", "Transition", "Payoff", "Revelation", "Political"]
 fatigueWords: ["delve", "tapestry", "testament", "intricate", "pivotal", "vibrant", "comprehensive", "nuanced", "embark", "foster", "underscore", "bolstered", "crucial", "seamless", "leverage", "myriad"]
 numericalSystem: false
+quantitativeBodyState: true  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: false
 eraResearch: true
 pacingRule: "Worldbuilding emerges through action, not exposition. Tech reveals tied to plot-critical moments. Political/exploration arcs alternate with action every 2-4 chapters."

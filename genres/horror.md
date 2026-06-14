@@ -4,6 +4,7 @@ id: horror
 chapterTypes: ["氛围章", "事件章", "揭示章", "过渡章", "回收章", "规则章"]
 fatigueWords: ["毛骨悚然", "不寒而栗", "浑身发冷", "头皮发麻", "鸡皮疙瘩", "心跳加速", "仿佛", "不禁", "宛如", "竟然", "忽然", "猛地", "蓦然"]
 numericalSystem: false
+quantitativeBodyState: false  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: false
 eraResearch: false
 pacingRule: "氛围递进：安全感→微妙不适→确认异常→恐惧升级→高潮→喘息，循环推进"

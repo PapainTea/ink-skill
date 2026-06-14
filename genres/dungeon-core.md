@@ -5,6 +5,7 @@ language: en
 chapterTypes: ["Strategy", "Adventurer POV", "Setup", "Transition", "Payoff"]
 fatigueWords: ["delve", "tapestry", "testament", "intricate", "pivotal", "vibrant", "comprehensive", "nuanced", "embark", "foster", "underscore", "bolstered", "crucial"]
 numericalSystem: true
+quantitativeBodyState: true  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: false
 eraResearch: false
 pacingRule: "Alternate dungeon POV (planning/building) with adventurer POV (exploration/combat) every 1-2 chapters. Expansion milestone every 5-8 chapters."

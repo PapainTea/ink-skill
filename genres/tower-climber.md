@@ -5,6 +5,7 @@ language: en
 chapterTypes: ["Floor Challenge", "Progression", "Setup", "Transition", "Payoff", "Boss Fight", "Rest Interval", "Secret Discovery"]
 fatigueWords: ["delve", "tapestry", "testament", "intricate", "pivotal", "vibrant", "comprehensive", "nuanced", "embark", "foster", "underscore", "bolstered", "crucial", "palpable", "resonant", "towering"]
 numericalSystem: false
+quantitativeBodyState: true  # 身体状态字段是否允许 Writer 用具体数字描述（true=允许心率/血量等，false=必须质性如'沉/紧/撕'）
 powerScaling: true
 eraResearch: false
 pacingRule: "Each floor arc spans 3-8 chapters: introduction, exploration, confrontation, advancement. Difficulty must escalate visibly between floors."
